@@ -5,6 +5,8 @@ class RuleResult:
         self,
         name: str,
         category: str,
+        account_name: str,
+        opportunity_name: str,
         responsible: str,
         fields: tuple[str, ...],
         metric_name: str,
@@ -17,6 +19,8 @@ class RuleResult:
     ) -> None:
         self._name = name
         self._category = category
+        self._account_name = account_name
+        self._opportunity_name = opportunity_name
         self._responsible = responsible
         self._fields = fields
         self._metric_name = metric_name
@@ -34,6 +38,14 @@ class RuleResult:
     @property
     def category(self) -> str:
         return self._category
+
+    @property
+    def account_name(self) -> str:
+        return self._account_name
+
+    @property
+    def opportunity_name(self) -> str:
+        return self._opportunity_name
 
     @property
     def responsible(self) -> str:

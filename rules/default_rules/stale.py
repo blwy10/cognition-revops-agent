@@ -50,7 +50,8 @@ def staleness_explanation(metric_name: str, value: float) -> str:
     return f"Days since last stage change is {value} days old, which is above the {severity_label.value.lower()} threshold of {selected_threshold} days"
 
 StalenessRule = Rule(
-    name="Stale Opportunity",
+    rule_type="opportunity",
+    name="Stale Opp",
     category="Pipeline Hygiene",
     metric=staleness_metric,
     condition=staleness_condition,

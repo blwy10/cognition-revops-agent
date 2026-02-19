@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QObject, QPoint, QTimer, Qt
+from PySide6.QtCore import QObject, QPoint, QSortFilterProxyModel, QTimer, Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QStyle,
     QTableView,
@@ -21,8 +22,40 @@ from PySide6.QtWidgets import (
 from app.state import AppState
 
 
+class InboxSortProxyModel(QSortFilterProxyModel):
+    def __init__(self, parent: Optional[QObject] = None) -> None:
+        super().__init__(parent)
+
+        self._severity_rank = {
+            "HIGH": 3,
+            "MEDIUM": 2,
+            "LOW": 1,
+        }
+        self._status_rank = {
+            "Open": 4,
+            "Acknowledged": 3,
+            "Snooze": 2,
+            "Snoozed": 2,
+            "Resolved": 1,
+        }
+
+    def lessThan(self, left, right) -> bool:  # type: ignore[override]
+        column = left.column()
+        if column == 0:
+            left_text = str(left.data(Qt.DisplayRole) or "").strip().upper()
+            right_text = str(right.data(Qt.DisplayRole) or "").strip().upper()
+            return self._severity_rank.get(left_text, 0) < self._severity_rank.get(right_text, 0)
+
+        if column == 6:
+            left_text = str(left.data(Qt.DisplayRole) or "").strip()
+            right_text = str(right.data(Qt.DisplayRole) or "").strip()
+            return self._status_rank.get(left_text, 0) < self._status_rank.get(right_text, 0)
+
+        return super().lessThan(left, right)
+
+
 class InboxTab(QWidget):
-    COLUMNS = ["Severity", "Name", "Category", "Owner", "Status", "Timestamp"]
+    COLUMNS = ["Severity", "Name", "Account", "Opportunity", "Category", "Owner", "Status", "Timestamp"]
 
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
@@ -43,16 +76,25 @@ class InboxTab(QWidget):
         self.table.setShowGrid(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setWordWrap(False)
+        self.table.setSortingEnabled(True)
 
         self.model = QStandardItemModel(self)
         self.model.setHorizontalHeaderLabels(self.COLUMNS)
-        self.table.setModel(self.model)
+
+        self.proxy_model = InboxSortProxyModel(self)
+        self.proxy_model.setSourceModel(self.model)
+        self.proxy_model.setDynamicSortFilter(True)
+
+        self.table.setModel(self.proxy_model)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.splitter.addWidget(self.table)
 
         self.details_widget = QWidget(self)
+        self.details_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.details_layout = QVBoxLayout(self.details_widget)
         self.details_layout.setContentsMargins(12, 12, 12, 12)
@@ -74,11 +116,16 @@ class InboxTab(QWidget):
         self.details_form.setContentsMargins(12, 12, 12, 12)
         self.details_form.setHorizontalSpacing(10)
         self.details_form.setVerticalSpacing(8)
+        self.details_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
         self.severity_edit = QLineEdit()
         self.severity_edit.setReadOnly(True)
         self.name_edit = QLineEdit()
         self.name_edit.setReadOnly(True)
+        self.account_name_edit = QLineEdit()
+        self.account_name_edit.setReadOnly(True)
+        self.opportunity_name_edit = QLineEdit()
+        self.opportunity_name_edit.setReadOnly(True)
         self.category_edit = QLineEdit()
         self.category_edit.setReadOnly(True)
         self.owner_edit = QLineEdit()
@@ -98,8 +145,27 @@ class InboxTab(QWidget):
         self.resolution_edit = QTextEdit()
         self.resolution_edit.setReadOnly(True)
 
+        for w in (
+            self.severity_edit,
+            self.name_edit,
+            self.account_name_edit,
+            self.opportunity_name_edit,
+            self.category_edit,
+            self.owner_edit,
+            self.status_edit,
+            self.timestamp_edit,
+            self.fields_edit,
+            self.metric_name_edit,
+        ):
+            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        for w in (self.metric_value_edit, self.explanation_edit, self.resolution_edit):
+            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
         self.details_form.addRow("Severity", self.severity_edit)
         self.details_form.addRow("Name", self.name_edit)
+        self.details_form.addRow("Account", self.account_name_edit)
+        self.details_form.addRow("Opportunity", self.opportunity_name_edit)
         self.details_form.addRow("Category", self.category_edit)
         self.details_form.addRow("Owner", self.owner_edit)
         self.details_form.addRow("Status", self.status_edit)
@@ -111,10 +177,12 @@ class InboxTab(QWidget):
         self.details_form.addRow("Resolution", self.resolution_edit)
 
         self.details_layout.addLayout(self.actionButtonLayout)
-        self.details_layout.addLayout(self.details_form)
+        self.details_layout.addLayout(self.details_form, 1)
 
         self.splitter.addWidget(self.details_widget)
         self.splitter.setSizes([480, 720])
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 2)
 
         self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.state.issuesChanged.connect(self._rebuild_model)
@@ -138,6 +206,8 @@ class InboxTab(QWidget):
             items = [
                 QStandardItem(str(issue.get("severity", ""))),
                 QStandardItem(str(issue.get("name", ""))),
+                QStandardItem(str(issue.get("account_name", ""))),
+                QStandardItem(str(issue.get("opportunity_name", ""))),
                 QStandardItem(str(issue.get("category", ""))),
                 QStandardItem(str(issue.get("owner", ""))),
                 QStandardItem(str(issue.get("status", ""))),
@@ -151,7 +221,7 @@ class InboxTab(QWidget):
                 self._set_row_bold(items, True)
 
             status = str(issue.get("status", ""))
-            status_item = items[4]
+            status_item = items[6]
             if status == "Snoozed":
                 status_item.setIcon(self._snooze_icon)
             elif status == "Resolved":
@@ -163,8 +233,9 @@ class InboxTab(QWidget):
         selected = self.table.selectionModel().selectedRows()
         if not selected:
             return None
-        row = selected[0].row()
-        index_item = self.model.item(row, 0)
+
+        source_row = self.proxy_model.mapToSource(selected[0]).row()
+        index_item = self.model.item(source_row, 0)
         if index_item is None:
             return None
         issue_index = int(index_item.data(Qt.UserRole))
@@ -176,10 +247,10 @@ class InboxTab(QWidget):
         selected = self.table.selectionModel().selectedRows()
         if not selected:
             return None
-        return selected[0].row()
+        return self.proxy_model.mapToSource(selected[0]).row()
 
     def _update_row_visuals(self, *, row: int, issue: dict) -> None:
-        status_item = self.model.item(row, 4)
+        status_item = self.model.item(row, 6)
         if status_item is not None:
             status_text = str(issue.get("status", ""))
             status_item.setText(status_text)
@@ -314,8 +385,8 @@ class InboxTab(QWidget):
             self._clear_details()
             return
 
-        row = selected[0].row()
-        index_item = self.model.item(row, 0)
+        source_row = self.proxy_model.mapToSource(selected[0]).row()
+        index_item = self.model.item(source_row, 0)
         if index_item is None:
             self._clear_details()
             return
@@ -330,7 +401,7 @@ class InboxTab(QWidget):
 
         if issue.get("status") == "Open":
             issue["status"] = "Acknowledged"
-            status_item = self.model.item(row, 4)
+            status_item = self.model.item(source_row, 6)
             if status_item is not None:
                 status_item.setText("Acknowledged")
                 status_item.setIcon(QIcon())
@@ -338,13 +409,15 @@ class InboxTab(QWidget):
 
         if issue.get("is_unread", False):
             issue["is_unread"] = False
-            row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
+            row_items = [self.model.item(source_row, c) for c in range(self.model.columnCount())]
             self._set_row_bold([i for i in row_items if i is not None], False)
             self.state.stateChanged.emit()
 
     def _set_details(self, issue: dict) -> None:
         self.severity_edit.setText(str(issue.get("severity", "")))
         self.name_edit.setText(str(issue.get("name", "")))
+        self.account_name_edit.setText(str(issue.get("account_name", "")))
+        self.opportunity_name_edit.setText(str(issue.get("opportunity_name", "")))
         self.category_edit.setText(str(issue.get("category", "")))
         self.owner_edit.setText(str(issue.get("owner", "")))
         self.status_edit.setText(str(issue.get("status", "")))
@@ -366,6 +439,8 @@ class InboxTab(QWidget):
     def _clear_details(self) -> None:
         self.severity_edit.clear()
         self.name_edit.clear()
+        self.account_name_edit.clear()
+        self.opportunity_name_edit.clear()
         self.category_edit.clear()
         self.owner_edit.clear()
         self.status_edit.clear()

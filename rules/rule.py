@@ -10,6 +10,7 @@ from .severity import Severity
 class Rule:
     def __init__(
         self,
+        rule_type: str = "opportunity",
         *,
         name: str = "",
         category: str = "",
@@ -24,6 +25,7 @@ class Rule:
     ) -> None:
         self._name = name
         self._category = category
+        self._rule_type = rule_type
         self._responsible = responsible or (lambda obj: "")
         self._metric_name = metric_name
         self._metric = metric or (lambda obj: 0.0)
@@ -48,6 +50,14 @@ class Rule:
     @category.setter
     def category(self, value: str) -> None:
         self._category = value
+
+    @property
+    def rule_type(self) -> str:
+        return self._rule_type
+
+    @rule_type.setter
+    def rule_type(self, value: str) -> None:
+        self._rule_type = value
 
     @property
     def responsible(self) -> Callable[[dict], str]:
@@ -112,9 +122,18 @@ class Rule:
             formatted_metric_value = metric_value
         explanation = self._explanation(self.metric_name, metric_value)
 
+        if self.rule_type == "opportunity":
+            account_name = obj.get("account_name", "")
+            opportunity_name = obj.get("name", "")
+        else:
+            account_name = ""
+            opportunity_name = ""
+
         return RuleResult(
             name=self.name,
             category=self.category,
+            account_name=account_name,
+            opportunity_name=opportunity_name,
             responsible=self.responsible(obj),
             severity=severity.value if hasattr(severity, "value") else str(severity),
             fields=tuple(self.fields),

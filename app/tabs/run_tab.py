@@ -14,9 +14,18 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
-from rules.default_rules import MissingCloseDateRule, StalenessRule
+from rules.default_rules import (
+    MissingCloseDateRule,
+    StalenessRule,
+    PortfolioEarlyStageConcentrationRule,
+)
 
-opportunity_rules = [StalenessRule, MissingCloseDateRule]
+opportunity_rules = [
+    StalenessRule,
+    MissingCloseDateRule,
+]
+
+opportunity_portfollio_rules = [PortfolioEarlyStageConcentrationRule]
 
 
 class RunTab(QWidget):
@@ -66,6 +75,8 @@ class RunTab(QWidget):
             next_id = max(r["run_id"] for r in self.state.runs) + 1
 
         issues: list[dict[str, Any]] = []
+
+        # Run opportunity-level rules
         for opp in self.state.opportunities:
             for rule in opportunity_rules:
                 try:
@@ -81,6 +92,8 @@ class RunTab(QWidget):
                     {
                         "severity": str(result.severity),
                         "name": str(result.name),
+                        "account_name": str(result.account_name),
+                        "opportunity_name": str(result.opportunity_name),
                         "category": str(result.category),
                         "owner": str(result.responsible),
                         "fields": list(result.fields),
@@ -93,6 +106,36 @@ class RunTab(QWidget):
                         "is_unread": True,
                     }
                 )
+
+        # Run portfolio-level rules
+        for rule in opportunity_portfollio_rules:
+            try:
+                result = rule.run(self.state.opportunities)
+            except Exception as e:
+                print(e)
+                raise
+
+            if result is None:
+                continue
+
+            issues.append(
+                {
+                    "severity": str(result.severity),
+                    "name": str(result.name),
+                    "account_name": str(result.account_name),
+                    "opportunity_name": str(result.opportunity_name),
+                    "category": str(result.category),
+                    "owner": str(result.responsible),
+                    "fields": list(result.fields),
+                    "metric_name": str(result.metric_name),
+                    "metric_value": result.formatted_metric_value,
+                    "explanation": str(result.explanation),
+                    "resolution": str(result.resolution),
+                    "status": "Open",
+                    "timestamp": QDateTime.currentDateTime(),
+                    "is_unread": True,
+                }
+            )
 
         self.state.issues = issues
         self.state.selected_run_id = next_id

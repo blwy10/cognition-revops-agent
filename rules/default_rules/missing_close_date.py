@@ -65,6 +65,7 @@ def missing_close_date_explanation(metric_name: str, metric_value: dict) -> str:
 
 
 MissingCloseDateRule = Rule(
+    rule_type="opportunity",
     name="Missing close date",
     category="Pipeline Hygiene",
     metric=missing_close_date_metric,
