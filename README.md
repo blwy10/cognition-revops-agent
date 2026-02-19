@@ -50,7 +50,7 @@
 # What would I improve with more time
 - Improve industry classification - currently it is flat and the generic BLS top-level classification
   - Why important: Better alignment with Cognition ICP
-- Create a dedicated metrics later - currently all metrics are calculated within Rule objects
+- Create a dedicated metrics layer - currently all metrics are calculated within Rule objects
   - Why important: More scalable once I have duplicate metrics, and better separation of concerns and testability
 - Concurrent rule execution - currently they run sequentially as there aren't many rules or data points to analyse
   - Why important: When the number of rules increase or the number of opportunities / accounts / reps, it will improve waiting time
