@@ -154,3 +154,7 @@ cython_debug/
 
 # Cache
 *.cache
+
+# Keep Next.js source
+!nextjs-version/lib/
+!nextjs-version/lib/**
