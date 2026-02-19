@@ -69,6 +69,16 @@ def validate(
     _assert(len(acct_by_id) == len(accounts), "Duplicate account ids")
     _assert(len(terr_by_id) == len(territories), "Duplicate territory ids")
 
+    rep_by_name = {r.get("name"): r for r in reps}
+    acct_by_name = {a.get("name"): a for a in accounts}
+    opp_by_name = {o.get("name"): o for o in opportunities}
+    terr_by_name = {t.get("name"): t for t in territories}
+
+    _assert(len(rep_by_name) == len(reps), "Duplicate rep names")
+    _assert(len(acct_by_name) == len(accounts), "Duplicate account names")
+    _assert(len(opp_by_name) == len(opportunities), "Duplicate opportunity names")
+    _assert(len(terr_by_name) == len(territories), "Duplicate territory names")
+
     # Account core relationships
     for a in accounts:
         rep_id = a.get("repId")

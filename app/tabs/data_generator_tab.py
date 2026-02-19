@@ -37,15 +37,6 @@ class DataGeneratorTab(QWidget):
         data_layout.setSpacing(10)
         layout.addWidget(data_group)
 
-        controls_row = QHBoxLayout()
-        controls_row.setSpacing(8)
-        self.generate_button = QPushButton("Generate Dummy Data…")
-        self.load_button = QPushButton("Load Existing Data…")
-        controls_row.addWidget(self.generate_button)
-        controls_row.addWidget(self.load_button)
-        controls_row.addStretch(1)
-        data_layout.addLayout(controls_row)
-
         output_row = QHBoxLayout()
         output_row.setSpacing(8)
         self.select_output_button = QPushButton("Select JSON Data File…")
@@ -54,6 +45,15 @@ class DataGeneratorTab(QWidget):
         output_row.addWidget(self.select_output_button)
         output_row.addWidget(self.output_path_edit, 1)
         data_layout.addLayout(output_row)
+
+        controls_row = QHBoxLayout()
+        controls_row.setSpacing(8)
+        self.generate_button = QPushButton("Generate Dummy Data…")
+        self.load_button = QPushButton("Load Existing Data…")
+        controls_row.addWidget(self.generate_button)
+        controls_row.addWidget(self.load_button)
+        controls_row.addStretch(1)
+        data_layout.addLayout(controls_row)
 
         self.loaded_status_label = QLabel()
         self.loaded_status_label.setWordWrap(True)

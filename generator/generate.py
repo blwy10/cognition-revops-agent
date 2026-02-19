@@ -7,6 +7,29 @@ from .io import parse_state_region_mapping, read_json, read_text_list
 from .rng import Rng
 
 
+def _ensure_unique_names(items: list[dict], *, kind: str) -> None:
+    used: set[str] = set()
+    counts: dict[str, int] = defaultdict(int)
+    for it in items:
+        base = str(it.get("name", ""))
+        if not base:
+            raise ValueError(f"{kind} missing name")
+
+        if base not in used:
+            used.add(base)
+            counts[base] = 1
+            continue
+
+        counts[base] += 1
+        n = counts[base]
+        candidate = f"{base} ({n})"
+        while candidate in used:
+            n += 1
+            candidate = f"{base} ({n})"
+        it["name"] = candidate
+        used.add(candidate)
+
+
 def _clamp_int(x: float, lo: int, hi: int) -> int:
     if x < lo:
         return lo
@@ -235,6 +258,8 @@ def generate(seed: int | None = None):
             }
         )
 
+    _ensure_unique_names(accounts, kind="account")
+
     # -------------
     # Territories (industry-based deterministic mapping)
     # -------------
@@ -243,6 +268,8 @@ def generate(seed: int | None = None):
     territories: list[dict] = [
         {"id": industry_to_territory_id[ind], "name": f"{ind} Territory"} for ind in used_industries
     ]
+
+    _ensure_unique_names(territories, kind="territory")
 
     for a in accounts:
         a["territoryId"] = int(industry_to_territory_id[a["industry"]])
@@ -265,6 +292,8 @@ def generate(seed: int | None = None):
                 "territoryId": int(terr_id),
             }
         )
+
+    _ensure_unique_names(reps, kind="rep")
 
     reps_by_territory: dict[int, list[dict]] = defaultdict(list)
     for r in reps:
@@ -344,6 +373,8 @@ def generate(seed: int | None = None):
             opportunities.append(opp)
             opps_by_account_id[acct_id].append(opp)
             opp_id += 1
+
+    _ensure_unique_names(opportunities, kind="opportunity")
 
     # Derived inPipeline
     for a in accounts:
