@@ -132,6 +132,7 @@ class InboxTab(QWidget):
             issue["is_unread"] = False
             row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
             self._set_row_bold([i for i in row_items if i is not None], False)
+            self.state.stateChanged.emit()
 
     def _set_details(self, issue: dict) -> None:
         self.severity_edit.setText(str(issue.get("severity", "")))

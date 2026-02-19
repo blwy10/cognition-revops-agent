@@ -4,7 +4,11 @@ from typing import Optional
 
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import (
+    QFileDialog,
     QFormLayout,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -19,6 +23,28 @@ class SettingsTab(QWidget):
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.state = state
+
+        persistenceGroup = QGroupBox("Run State Persistence")
+        persistenceLayout = QVBoxLayout(persistenceGroup)
+        persistenceLayout.setContentsMargins(16, 16, 16, 16)
+        persistenceLayout.setSpacing(12)
+
+        persistenceForm = QFormLayout()
+        persistenceForm.setHorizontalSpacing(10)
+        persistenceForm.setVerticalSpacing(8)
+
+        path_row = QHBoxLayout()
+        self.run_json_path_edit = QLineEdit()
+        self.run_json_path_edit.setText(self.state.run_json_path)
+        self.run_json_browse = QPushButton("Browse…")
+        self.run_json_reset = QPushButton("Reset to default")
+        path_row.addWidget(self.run_json_path_edit, 1)
+        path_row.addWidget(self.run_json_browse)
+        path_row.addWidget(self.run_json_reset)
+
+        persistenceForm.addRow("Run JSON file", path_row)
+        persistenceLayout.addLayout(persistenceForm)
+        persistenceLayout.addStretch(1)
 
         tamGroup = QGroupBox("TAM Settings")
 
@@ -97,6 +123,33 @@ class SettingsTab(QWidget):
         staleLayout.addStretch(1)
 
         layout = QVBoxLayout(self)
+        layout.addWidget(persistenceGroup)
         layout.addWidget(tamGroup)
         layout.addWidget(staleGroup)
         layout.addStretch(1)
+
+        self.run_json_browse.clicked.connect(self._on_browse_run_json)
+        self.run_json_reset.clicked.connect(self._on_reset_run_json)
+        self.run_json_path_edit.editingFinished.connect(self._on_run_json_editing_finished)
+        self.state.runJsonPathChanged.connect(self._on_state_run_json_path_changed)
+
+    def _on_browse_run_json(self) -> None:
+        path, _filter = QFileDialog.getSaveFileName(
+            self,
+            "Select Run JSON File",
+            self.run_json_path_edit.text().strip() or self.state.run_json_path,
+            "JSON Files (*.json)",
+        )
+        if not path:
+            return
+        self.state.run_json_path = path
+
+    def _on_reset_run_json(self) -> None:
+        self.state.run_json_path = self.state.get_default_run_json_path()
+
+    def _on_run_json_editing_finished(self) -> None:
+        self.state.run_json_path = self.run_json_path_edit.text().strip()
+
+    def _on_state_run_json_path_changed(self, path: str) -> None:
+        if self.run_json_path_edit.text().strip() != path:
+            self.run_json_path_edit.setText(path)

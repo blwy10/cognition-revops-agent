@@ -7,6 +7,7 @@ from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
+    QMessageBox,
     QPushButton,
     QTableView,
     QVBoxLayout,
@@ -82,35 +83,21 @@ class PreviousRunsTab(QWidget):
         run_id_item = self.model.item(row, 0)
         run_id = int(run_id_item.data(Qt.UserRole))
 
-        base = run_id * 100
-        from PySide6.QtCore import QDateTime
+        selected_run = next((r for r in self.state.runs if int(r.get("run_id", -1)) == run_id), None)
+        if not isinstance(selected_run, dict):
+            QMessageBox.warning(self, "Run Not Found", "The selected run could not be found in memory.")
+            return
 
-        now = QDateTime.currentDateTime()
-        self.state.issues = [
-            {
-                "severity": "High" if (base + 1) % 2 == 0 else "Medium",
-                "category": "Pipeline",
-                "owner": "Sales Ops",
-                "status": "Open",
-                "timestamp": now.addSecs(-60 * (base + 1)),
-                "is_unread": True,
-            },
-            {
-                "severity": "Low",
-                "category": "CRM Hygiene",
-                "owner": "RevOps",
-                "status": "Backlog",
-                "timestamp": now.addSecs(-60 * (base + 2)),
-                "is_unread": True,
-            },
-            {
-                "severity": "Medium",
-                "category": "Attribution",
-                "owner": "Marketing Ops",
-                "status": "Investigating",
-                "timestamp": now.addSecs(-60 * (base + 3)),
-                "is_unread": True,
-            },
-        ]
+        run_issues = selected_run.get("issues")
+        if not isinstance(run_issues, list):
+            QMessageBox.warning(
+                self,
+                "Run Issues Missing",
+                "This run does not have an issues snapshot saved (it may be from an older version).",
+            )
+            return
+
+        self.state.issues = list(run_issues)
         self.state.issuesChanged.emit()
+        self.state.stateChanged.emit()
         self.state.requestTabChange.emit("Inbox")

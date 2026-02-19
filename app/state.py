@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from PySide6.QtCore import QDateTime, QObject, Signal
+from PySide6.QtCore import QDateTime, QObject, Qt, Signal, QSettings
 
 
 class AppState(QObject):
@@ -13,10 +15,13 @@ class AppState(QObject):
     datasetChanged = Signal()
     runsChanged = Signal()
     issuesChanged = Signal()
+    stateChanged = Signal()
+    runJsonPathChanged = Signal(str)
     requestTabChange = Signal(str)
 
     def __init__(self, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
+        self._settings = QSettings("cognition", "revops-analysis-agent")
         self.loaded_data_path: Optional[str] = None
         self.output_data_path: Optional[str] = None
 
@@ -29,6 +34,90 @@ class AppState(QObject):
 
         self.runs: list[dict] = []
         self.issues: list[dict] = []
+
+        default_run_path = self.get_default_run_json_path()
+        stored_run_path = self._settings.value("run_json_path", default_run_path)
+        self._run_json_path = str(stored_run_path) if stored_run_path else default_run_path
+
+    @property
+    def run_json_path(self) -> str:
+        return self._run_json_path
+
+    @run_json_path.setter
+    def run_json_path(self, value: str) -> None:
+        value = str(value or "").strip()
+        if not value:
+            value = self.get_default_run_json_path()
+        if value == getattr(self, "_run_json_path", None):
+            return
+        self._run_json_path = value
+        self._settings.setValue("run_json_path", value)
+        self.runJsonPathChanged.emit(value)
+
+    def get_default_run_json_path(self) -> str:
+        try:
+            import main as main_module
+
+            base_dir = Path(main_module.__file__).resolve().parent
+        except Exception:
+            base_dir = Path(os.getcwd()).resolve()
+        return str(base_dir / "run.json")
+
+    def _json_friendly(self, value: Any) -> Any:
+        if isinstance(value, QDateTime):
+            return value.toString(Qt.ISODate)
+        if isinstance(value, datetime):
+            return value.astimezone(timezone.utc).isoformat()
+        if isinstance(value, dict):
+            return {k: self._json_friendly(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._json_friendly(v) for v in value]
+        return value
+
+    def _parse_qdatetime(self, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        dt = QDateTime.fromString(value, Qt.ISODate)
+        return dt if dt.isValid() else value
+
+    def save_run_state_to_disk(self, path: Optional[str] = None) -> None:
+        target = str(path or self.run_json_path)
+        payload = {
+            "schema": "revops-agent-run",
+            "runs": self._json_friendly(self.runs),
+            "issues": self._json_friendly(self.issues),
+        }
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+
+    def load_run_state_from_disk(self, path: Optional[str] = None) -> bool:
+        target = str(path or self.run_json_path)
+        if not target or not os.path.exists(target):
+            return False
+
+        with open(target, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+
+        runs = payload.get("runs")
+        issues = payload.get("issues")
+        self.runs = list(runs) if isinstance(runs, list) else []
+        self.issues = list(issues) if isinstance(issues, list) else []
+
+        for run in self.runs:
+            if isinstance(run, dict) and "datetime" in run:
+                run["datetime"] = self._parse_qdatetime(run.get("datetime"))
+
+            nested_issues = run.get("issues") if isinstance(run, dict) else None
+            if isinstance(nested_issues, list):
+                for issue in nested_issues:
+                    if isinstance(issue, dict) and "timestamp" in issue:
+                        issue["timestamp"] = self._parse_qdatetime(issue.get("timestamp"))
+
+        for issue in self.issues:
+            if isinstance(issue, dict) and "timestamp" in issue:
+                issue["timestamp"] = self._parse_qdatetime(issue.get("timestamp"))
+
+        return True
 
     def load_json_data(self, path: str) -> None:
         with open(path, "r", encoding="utf-8") as f:
@@ -78,40 +167,3 @@ class AppState(QObject):
                 h["change_date"] = _parse_date_or_datetime(h.get("change_date"))
 
         self.datasetChanged.emit()
-
-    def seed_demo_data(self) -> None:
-        now = QDateTime.currentDateTime()
-        self.runs = [
-            {"run_id": 1, "datetime": now.addSecs(-3600 * 5), "issues_count": 3},
-            {"run_id": 2, "datetime": now.addSecs(-3600 * 2), "issues_count": 5},
-        ]
-
-        self.issues = [
-            {
-                "severity": "High",
-                "category": "Pipeline",
-                "owner": "Sales Ops",
-                "status": "Open",
-                "timestamp": now.addSecs(-1800),
-                "is_unread": True,
-            },
-            {
-                "severity": "Medium",
-                "category": "Attribution",
-                "owner": "Marketing Ops",
-                "status": "Investigating",
-                "timestamp": now.addSecs(-1200),
-                "is_unread": True,
-            },
-            {
-                "severity": "Low",
-                "category": "CRM Hygiene",
-                "owner": "RevOps",
-                "status": "Backlog",
-                "timestamp": now.addSecs(-600),
-                "is_unread": False,
-            },
-        ]
-
-        self.runsChanged.emit()
-        self.issuesChanged.emit()

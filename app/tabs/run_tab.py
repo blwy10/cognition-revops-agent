@@ -92,11 +92,20 @@ class RunTab(QWidget):
         self.state.issues = issues
         self.state.issuesChanged.emit()
 
+        self.state.stateChanged.emit()
+
         self.state.runs.append(
             {
                 "run_id": next_id,
                 "datetime": QDateTime.currentDateTime(),
                 "issues_count": len(issues),
+                "issues": list(issues),
             }
         )
         self.state.runsChanged.emit()
+
+        self.state.stateChanged.emit()
+        try:
+            self.state.save_run_state_to_disk()
+        except Exception:
+            pass
