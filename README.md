@@ -29,8 +29,15 @@
 - Analysis / rules:
   - The rules are defined as instances of the `Rule` class. They draw settings from `RuleSettings`
   - Rules are a metric, a condition, and some prettifier functions to make display prettier (descriptions, explanations, etc.)
-  - Rules are executed in `run_tab.py`
+  - There are 4 kinds of rules:
+    - Rules run on each opportunity e.g., stale opportunities
+    - Rules run on each account e.g., accounts with no opportunities
+    - Rules run on each rep e.g., reps with too many accounts
+    - Rules run on all opportunities at once e.g., opportunity portfolio-wide early stage concentration
+    - Rules run on all accounts at once e.g., duplicate accounts
+  - Rules are executed in `run_tab.py`. The data is then passed into `AppState` which holds an in-memory version of all the runs and issues
   - Settings for rules are collected using widgets defined in `settings_tab.py`
+  - New rules can be created by following the format of the rules in the `rules/default_rules` directory, and adding it to the right list in `run_tab.py`. If you want settings input for a rule, you can collect it by adding a new settings group in `settings_tab.py` - see the `_build_*` functions and where they're called in the main class constructor `__init__`
 - `state.py` contains the main application state class as a singleton object
 
 # Tradeoffs
