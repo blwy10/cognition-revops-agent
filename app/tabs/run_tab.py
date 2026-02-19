@@ -81,6 +81,7 @@ class RunTab(QWidget):
                 issues.append(
                     {
                         "severity": str(result.severity),
+                        "name": str(result.name),
                         "category": str(result.category),
                         "owner": str(result.responsible),
                         "status": "Open",
@@ -90,6 +91,7 @@ class RunTab(QWidget):
                 )
 
         self.state.issues = issues
+        self.state.selected_run_id = next_id
         self.state.issuesChanged.emit()
 
         self.state.stateChanged.emit()

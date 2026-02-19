@@ -97,6 +97,7 @@ class PreviousRunsTab(QWidget):
             )
             return
 
+        self.state.selected_run_id = run_id
         self.state.issues = list(run_issues)
         self.state.issuesChanged.emit()
         self.state.stateChanged.emit()

@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QObject, Qt
-from PySide6.QtGui import QFont, QStandardItem, QStandardItemModel
+from PySide6.QtCore import QObject, QPoint, QTimer, Qt
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
     QLineEdit,
+    QPushButton,
     QSplitter,
+    QStyle,
     QTableView,
     QTextEdit,
     QVBoxLayout,
@@ -19,11 +21,13 @@ from app.state import AppState
 
 
 class InboxTab(QWidget):
-    COLUMNS = ["Severity", "Category", "Owner", "Status", "Timestamp"]
+    COLUMNS = ["Severity", "Name", "Category", "Owner", "Status", "Timestamp"]
 
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.state = state
+
+        self._snooze_icon = self._make_flag_icon()
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -67,7 +71,14 @@ class InboxTab(QWidget):
         self.notes_edit.setReadOnly(True)
         self.notes_edit.setPlainText("Select an issue to see details.")
 
+        self.snooze_button = QPushButton("Snooze")
+        self.resolve_button = QPushButton("Resolve")
+        self.reopen_button = QPushButton("Reopen")
+
         self.details_form.addRow("Severity", self.severity_edit)
+        self.details_form.addRow("", self.snooze_button)
+        self.details_form.addRow("", self.resolve_button)
+        self.details_form.addRow("", self.reopen_button)
         self.details_form.addRow("Category", self.category_edit)
         self.details_form.addRow("Owner", self.owner_edit)
         self.details_form.addRow("Status", self.status_edit)
@@ -80,18 +91,29 @@ class InboxTab(QWidget):
         self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.state.issuesChanged.connect(self._rebuild_model)
 
+        self.snooze_button.clicked.connect(self._on_snooze_clicked)
+        self.resolve_button.clicked.connect(self._on_resolve_clicked)
+        self.reopen_button.clicked.connect(self._on_reopen_clicked)
+
+        self._snooze_timer = QTimer(self)
+        self._snooze_timer.setInterval(60_000)
+        self._snooze_timer.timeout.connect(self._apply_snooze_expirations)
+        self._snooze_timer.start()
+
         self._rebuild_model()
 
     def _rebuild_model(self) -> None:
+        self._apply_snooze_expirations(emit_signals=False)
         self.model.removeRows(0, self.model.rowCount())
 
         for idx, issue in enumerate(self.state.issues):
             items = [
                 QStandardItem(str(issue.get("severity", ""))),
+                QStandardItem(str(issue.get("name", ""))),
                 QStandardItem(str(issue.get("category", ""))),
                 QStandardItem(str(issue.get("owner", ""))),
                 QStandardItem(str(issue.get("status", ""))),
-                QStandardItem(issue.get("timestamp").toString(Qt.ISODate) if issue.get("timestamp") else ""),
+                QStandardItem(issue.get("timestamp").toString("yyyy-MM-dd") if issue.get("timestamp") else ""),
             ]
 
             for item in items:
@@ -100,7 +122,120 @@ class InboxTab(QWidget):
             if issue.get("is_unread", False):
                 self._set_row_bold(items, True)
 
+            status = str(issue.get("status", ""))
+            status_item = items[4]
+            if status == "Snoozed":
+                status_item.setIcon(self._snooze_icon)
+            elif status == "Resolved":
+                status_item.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
+
             self.model.appendRow(items)
+
+    def _selected_issue_index(self) -> Optional[int]:
+        selected = self.table.selectionModel().selectedRows()
+        if not selected:
+            return None
+        row = selected[0].row()
+        index_item = self.model.item(row, 0)
+        if index_item is None:
+            return None
+        issue_index = int(index_item.data(Qt.UserRole))
+        if issue_index < 0 or issue_index >= len(self.state.issues):
+            return None
+        return issue_index
+
+    def _make_flag_icon(self) -> QIcon:
+        size = 14
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        pole_color = QColor(90, 90, 90)
+        flag_color = QColor(220, 60, 60)
+
+        painter.setPen(pole_color)
+        painter.drawLine(4, 2, 4, size - 2)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(flag_color)
+        points = [
+            (5, 3),
+            (12, 5),
+            (5, 7),
+        ]
+        painter.drawPolygon([QPoint(x, y) for x, y in points])
+
+        painter.end()
+        return QIcon(pixmap)
+
+    def _apply_snooze_expirations(self, *, emit_signals: bool = True) -> bool:
+        now = None
+        changed = False
+        for issue in self.state.issues:
+            if not isinstance(issue, dict):
+                continue
+            if issue.get("status") != "Snoozed":
+                continue
+            snoozed_until = issue.get("snoozed_until")
+            if snoozed_until is None:
+                continue
+            if now is None:
+                from PySide6.QtCore import QDateTime
+
+                now = QDateTime.currentDateTime()
+            try:
+                expired = bool(snoozed_until <= now)
+            except Exception:
+                expired = False
+            if not expired:
+                continue
+
+            issue["status"] = "Open"
+            issue["is_unread"] = True
+            issue.pop("snoozed_until", None)
+            changed = True
+
+        if changed and emit_signals:
+            self.state.issuesChanged.emit()
+            self.state.stateChanged.emit()
+
+        return changed
+
+    def _on_snooze_clicked(self) -> None:
+        issue_index = self._selected_issue_index()
+        if issue_index is None:
+            return
+        issue = self.state.issues[issue_index]
+        from PySide6.QtCore import QDateTime
+
+        issue["status"] = "Snoozed"
+        issue["snoozed_until"] = QDateTime.currentDateTime().addDays(1)
+        self.state.issuesChanged.emit()
+        self.state.stateChanged.emit()
+
+    def _on_resolve_clicked(self) -> None:
+        issue_index = self._selected_issue_index()
+        if issue_index is None:
+            return
+        issue = self.state.issues[issue_index]
+        issue["status"] = "Resolved"
+        issue.pop("snoozed_until", None)
+        issue["is_unread"] = False
+        self.state.issuesChanged.emit()
+        self.state.stateChanged.emit()
+
+    def _on_reopen_clicked(self) -> None:
+        issue_index = self._selected_issue_index()
+        if issue_index is None:
+            return
+        issue = self.state.issues[issue_index]
+        issue["status"] = "Open"
+        issue.pop("snoozed_until", None)
+        issue["is_unread"] = True
+        self.state.issuesChanged.emit()
+        self.state.stateChanged.emit()
 
     def _set_row_bold(self, row_items: list[QStandardItem], bold: bool) -> None:
         font = QFont()
@@ -128,6 +263,14 @@ class InboxTab(QWidget):
         issue = self.state.issues[issue_index]
         self._set_details(issue)
 
+        if issue.get("status") == "Open":
+            issue["status"] = "Acknowledged"
+            status_item = self.model.item(row, 4)
+            if status_item is not None:
+                status_item.setText("Acknowledged")
+                status_item.setIcon(QIcon())
+            self.state.stateChanged.emit()
+
         if issue.get("is_unread", False):
             issue["is_unread"] = False
             row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
@@ -140,7 +283,7 @@ class InboxTab(QWidget):
         self.owner_edit.setText(str(issue.get("owner", "")))
         self.status_edit.setText(str(issue.get("status", "")))
         ts = issue.get("timestamp")
-        self.timestamp_edit.setText(ts.toString(Qt.ISODate) if ts else "")
+        self.timestamp_edit.setText(ts.toString("yyyy-MM-dd") if ts else "")
         self.notes_edit.setPlainText("Placeholder notes for selected issue.")
 
     def _clear_details(self) -> None:

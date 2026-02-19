@@ -34,6 +34,7 @@ class AppState(QObject):
 
         self.runs: list[dict] = []
         self.issues: list[dict] = []
+        self.selected_run_id: Optional[int] = None
 
         default_run_path = self.get_default_run_json_path()
         stored_run_path = self._settings.value("run_json_path", default_run_path)
@@ -85,7 +86,7 @@ class AppState(QObject):
         payload = {
             "schema": "revops-agent-run",
             "runs": self._json_friendly(self.runs),
-            "issues": self._json_friendly(self.issues),
+            "selectedRun": self.selected_run_id,
         }
         with open(target, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
@@ -99,9 +100,14 @@ class AppState(QObject):
             payload = json.load(f)
 
         runs = payload.get("runs")
-        issues = payload.get("issues")
+        selected_run = payload.get("selectedRun")
         self.runs = list(runs) if isinstance(runs, list) else []
-        self.issues = list(issues) if isinstance(issues, list) else []
+        self.issues = []
+
+        try:
+            self.selected_run_id = int(selected_run) if selected_run is not None else None
+        except Exception:
+            self.selected_run_id = None
 
         for run in self.runs:
             if isinstance(run, dict) and "datetime" in run:
@@ -112,10 +118,37 @@ class AppState(QObject):
                 for issue in nested_issues:
                     if isinstance(issue, dict) and "timestamp" in issue:
                         issue["timestamp"] = self._parse_qdatetime(issue.get("timestamp"))
+                    if isinstance(issue, dict) and "snoozed_until" in issue:
+                        issue["snoozed_until"] = self._parse_qdatetime(issue.get("snoozed_until"))
 
-        for issue in self.issues:
-            if isinstance(issue, dict) and "timestamp" in issue:
-                issue["timestamp"] = self._parse_qdatetime(issue.get("timestamp"))
+        # Derive current issues list from selected run.
+        selected_run_dict: Optional[dict] = None
+        if self.selected_run_id is not None:
+            selected_run_dict = next(
+                (r for r in self.runs if isinstance(r, dict) and int(r.get("run_id", -1)) == int(self.selected_run_id)),
+                None,
+            )
+
+        if selected_run_dict is None and self.runs:
+            # Fallback to most recent run by run_id.
+            try:
+                selected_run_dict = max(
+                    (r for r in self.runs if isinstance(r, dict) and r.get("run_id") is not None),
+                    key=lambda r: int(r.get("run_id")),
+                )
+            except Exception:
+                selected_run_dict = None
+
+        if isinstance(selected_run_dict, dict):
+            try:
+                self.selected_run_id = int(selected_run_dict.get("run_id"))
+            except Exception:
+                self.selected_run_id = None
+
+            run_issues = selected_run_dict.get("issues")
+            self.issues = list(run_issues) if isinstance(run_issues, list) else []
+        else:
+            self.issues = []
 
         return True
 
