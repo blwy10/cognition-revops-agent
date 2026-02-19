@@ -1,0 +1,10 @@
+0 - New Opportunity
+1 - Qualification
+2 - Discovery
+3 - Solutioning
+4 - Proposal
+5 - Negotiation
+6 - Awaiting Signature
+7 - Closed Won
+8 - Closed Lost
+9 - Disqualified
