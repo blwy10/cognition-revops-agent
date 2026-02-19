@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QSettings
 from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
@@ -24,6 +24,8 @@ class SettingsTab(QWidget):
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.state = state
+        self._settings = QSettings("cognition", "revops-analysis-agent")
+        self._settings_group = "settings_tab"
 
         persistenceGroup = self._build_persistence_group()
         tamGroup = self._build_tam_group()
@@ -31,6 +33,7 @@ class SettingsTab(QWidget):
         missingCloseDateGroup = self._build_missing_close_date_group()
         portfolioEarlyStageGroup = self._build_portfolio_early_stage_group()
         repEarlyStageGroup = self._build_rep_early_stage_group()
+        acctPerRepGroup = self._build_acct_per_rep_group()
         slippingGroup = self._build_slipping_group()
 
         contentWidget = QWidget()
@@ -41,6 +44,7 @@ class SettingsTab(QWidget):
         contentLayout.addWidget(missingCloseDateGroup)
         contentLayout.addWidget(portfolioEarlyStageGroup)
         contentLayout.addWidget(repEarlyStageGroup)
+        contentLayout.addWidget(acctPerRepGroup)
         contentLayout.addWidget(slippingGroup)
         contentLayout.addStretch(1)
 
@@ -55,6 +59,37 @@ class SettingsTab(QWidget):
         self.run_json_reset.clicked.connect(self._on_reset_run_json)
         self.run_json_path_edit.editingFinished.connect(self._on_run_json_editing_finished)
         self.state.runJsonPathChanged.connect(self._on_state_run_json_path_changed)
+
+    def _rule_settings_key(self, key: str) -> str:
+        return f"{self._settings_group}/rule_settings/{key}"
+
+    def _load_int_setting(self, key: str) -> Optional[int]:
+        qkey = self._rule_settings_key(key)
+        if not self._settings.contains(qkey):
+            return None
+        value = self._settings.value(qkey, None)
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except Exception:
+            return None
+
+    def _persist_int_setting(self, key: str, value: int) -> None:
+        self._settings.setValue(self._rule_settings_key(key), int(value))
+
+    def _bind_rule_spinbox(self, spinbox: QSpinBox, key: str) -> None:
+        stored = self._load_int_setting(key)
+        if stored is not None:
+            spinbox.setValue(int(stored))
+
+        RuleSettings.set(key, int(spinbox.value()))
+
+        def _on_changed(v: int) -> None:
+            RuleSettings.set(key, int(v))
+            self._persist_int_setting(key, int(v))
+
+        spinbox.valueChanged.connect(_on_changed)
 
     def _build_persistence_group(self) -> QGroupBox:
         persistenceGroup = QGroupBox("Run State Persistence")
@@ -96,15 +131,8 @@ class SettingsTab(QWidget):
         coveragePct.setRange(0, 100)
         coveragePct.setValue(50)
 
-        RuleSettings.set("tam.revenue_per_developer", revPerDev.value())
-        RuleSettings.set("tam.coverage_percentage", coveragePct.value())
-
-        revPerDev.valueChanged.connect(
-            lambda v: RuleSettings.set("tam.revenue_per_developer", int(v))
-        )
-        coveragePct.valueChanged.connect(
-            lambda v: RuleSettings.set("tam.coverage_percentage", int(v))
-        )
+        self._bind_rule_spinbox(revPerDev, "tam.revenue_per_developer")
+        self._bind_rule_spinbox(coveragePct, "tam.coverage_percentage")
 
         tamForm.addRow("Revenue per developer", revPerDev)
         tamForm.addRow("Coverage percentage", coveragePct)
@@ -134,21 +162,9 @@ class SettingsTab(QWidget):
         staleHighDays.setRange(0, 365)
         staleHighDays.setValue(90)
 
-        RuleSettings.set("stale_opportunity.low_days", staleLowDays.value())
-        RuleSettings.set("stale_opportunity.medium_days", staleMediumDays.value())
-        RuleSettings.set("stale_opportunity.high_days", staleHighDays.value())
-
-        staleLowDays.valueChanged.connect(
-            lambda v: RuleSettings.set("stale_opportunity.low_days", int(v))
-        )
-
-        staleMediumDays.valueChanged.connect(
-            lambda v: RuleSettings.set("stale_opportunity.medium_days", int(v))
-        )
-
-        staleHighDays.valueChanged.connect(
-            lambda v: RuleSettings.set("stale_opportunity.high_days", int(v))
-        )
+        self._bind_rule_spinbox(staleLowDays, "stale_opportunity.low_days")
+        self._bind_rule_spinbox(staleMediumDays, "stale_opportunity.medium_days")
+        self._bind_rule_spinbox(staleHighDays, "stale_opportunity.high_days")
 
         staleForm.addRow("Stale days (low)", staleLowDays)
         staleForm.addRow("Stale days (medium)", staleMediumDays)
@@ -175,18 +191,11 @@ class SettingsTab(QWidget):
         missingCloseDateMediumMaxStage.setRange(0, 6)
         missingCloseDateMediumMaxStage.setValue(2)
 
-        RuleSettings.set(
-            "missing_close_date.low_max_stage", missingCloseDateLowMaxStage.value()
+        self._bind_rule_spinbox(
+            missingCloseDateLowMaxStage, "missing_close_date.low_max_stage"
         )
-        RuleSettings.set(
-            "missing_close_date.medium_max_stage", missingCloseDateMediumMaxStage.value()
-        )
-
-        missingCloseDateLowMaxStage.valueChanged.connect(
-            lambda v: RuleSettings.set("missing_close_date.low_max_stage", int(v))
-        )
-        missingCloseDateMediumMaxStage.valueChanged.connect(
-            lambda v: RuleSettings.set("missing_close_date.medium_max_stage", int(v))
+        self._bind_rule_spinbox(
+            missingCloseDateMediumMaxStage, "missing_close_date.medium_max_stage"
         )
 
         missingCloseDateForm.addRow(
@@ -213,33 +222,14 @@ class SettingsTab(QWidget):
         portfolioEarlyHighPct.setRange(0, 100)
         portfolioEarlyHighPct.setValue(60)
 
-        RuleSettings.set(
-            "portfolio_early_stage_concentration.low_pct",
-            portfolioEarlyLowPct.value(),
+        self._bind_rule_spinbox(
+            portfolioEarlyLowPct, "portfolio_early_stage_concentration.low_pct"
         )
-        RuleSettings.set(
-            "portfolio_early_stage_concentration.medium_pct",
-            portfolioEarlyMediumPct.value(),
+        self._bind_rule_spinbox(
+            portfolioEarlyMediumPct, "portfolio_early_stage_concentration.medium_pct"
         )
-        RuleSettings.set(
-            "portfolio_early_stage_concentration.high_pct",
-            portfolioEarlyHighPct.value(),
-        )
-
-        portfolioEarlyLowPct.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "portfolio_early_stage_concentration.low_pct", int(v)
-            )
-        )
-        portfolioEarlyMediumPct.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "portfolio_early_stage_concentration.medium_pct", int(v)
-            )
-        )
-        portfolioEarlyHighPct.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "portfolio_early_stage_concentration.high_pct", int(v)
-            )
+        self._bind_rule_spinbox(
+            portfolioEarlyHighPct, "portfolio_early_stage_concentration.high_pct"
         )
 
         portfolioEarlyStageForm = QFormLayout()
@@ -272,49 +262,17 @@ class SettingsTab(QWidget):
         repEarlyHighPct.setRange(0, 100)
         repEarlyHighPct.setValue(60)
 
-        RuleSettings.set(
-            "rep_early_stage_concentration.low_pct",
-            repEarlyLowPct.value(),
+        self._bind_rule_spinbox(repEarlyLowPct, "rep_early_stage_concentration.low_pct")
+        self._bind_rule_spinbox(
+            repEarlyMediumPct, "rep_early_stage_concentration.medium_pct"
         )
-        RuleSettings.set(
-            "rep_early_stage_concentration.medium_pct",
-            repEarlyMediumPct.value(),
-        )
-        RuleSettings.set(
-            "rep_early_stage_concentration.high_pct",
-            repEarlyHighPct.value(),
-        )
-
-        repEarlyLowPct.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "rep_early_stage_concentration.low_pct", int(v)
-            )
-        )
-        repEarlyMediumPct.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "rep_early_stage_concentration.medium_pct", int(v)
-            )
-        )
-        repEarlyHighPct.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "rep_early_stage_concentration.high_pct", int(v)
-            )
-        )
+        self._bind_rule_spinbox(repEarlyHighPct, "rep_early_stage_concentration.high_pct")
 
         repEarlyMinOpps = QSpinBox()
         repEarlyMinOpps.setRange(0, 10000)
         repEarlyMinOpps.setValue(10)
 
-        RuleSettings.set(
-            "rep_early_stage_concentration.min_opps",
-            repEarlyMinOpps.value(),
-        )
-
-        repEarlyMinOpps.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "rep_early_stage_concentration.min_opps", int(v)
-            )
-        )
+        self._bind_rule_spinbox(repEarlyMinOpps, "rep_early_stage_concentration.min_opps")
 
         repEarlyStageForm = QFormLayout()
         repEarlyStageForm.setHorizontalSpacing(10)
@@ -331,67 +289,72 @@ class SettingsTab(QWidget):
         repEarlyStageLayout.addLayout(repEarlyStageForm)
         repEarlyStageLayout.addStretch(1)
         return repEarlyStageGroup
+
+    def _build_acct_per_rep_group(self) -> QGroupBox:
+        acctPerRepLow = QSpinBox()
+        acctPerRepLow.setRange(0, 10000)
+        acctPerRepLow.setValue(6)
+
+        acctPerRepMedium = QSpinBox()
+        acctPerRepMedium.setRange(0, 10000)
+        acctPerRepMedium.setValue(10)
+
+        acctPerRepHigh = QSpinBox()
+        acctPerRepHigh.setRange(0, 10000)
+        acctPerRepHigh.setValue(15)
+
+        self._bind_rule_spinbox(acctPerRepLow, "acct_per_rep.low_severity")
+        self._bind_rule_spinbox(acctPerRepMedium, "acct_per_rep.medium_severity")
+        self._bind_rule_spinbox(acctPerRepHigh, "acct_per_rep.high_severity")
+
+        acctPerRepForm = QFormLayout()
+        acctPerRepForm.setHorizontalSpacing(10)
+        acctPerRepForm.setVerticalSpacing(8)
+        acctPerRepForm.addRow(
+            "Accounts owned > (low severity)",
+            acctPerRepLow,
+        )
+        acctPerRepForm.addRow(
+            "Accounts owned > (medium severity)",
+            acctPerRepMedium,
+        )
+        acctPerRepForm.addRow(
+            "Accounts owned > (high severity)",
+            acctPerRepHigh,
+        )
+
+        acctPerRepGroup = QGroupBox("Accounts Per Rep Settings")
+        acctPerRepLayout = QVBoxLayout(acctPerRepGroup)
+        acctPerRepLayout.setContentsMargins(16, 16, 16, 16)
+        acctPerRepLayout.setSpacing(12)
+        acctPerRepLayout.addLayout(acctPerRepForm)
+        acctPerRepLayout.addStretch(1)
+        return acctPerRepGroup
     
     def _build_slipping_group(self) -> QGroupBox:
         slippingLateStage = QSpinBox()
         slippingLateStage.setRange(0, 6)
         slippingLateStage.setValue(5)
 
-        RuleSettings.set(
-            "slipping.late_stage",
-            slippingLateStage.value(),
-        )
-
-        slippingLateStage.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "slipping.late_stage", int(v)
-            )
-        )
+        self._bind_rule_spinbox(slippingLateStage, "slipping.late_stage")
 
         slippingLowSeverity = QSpinBox()
         slippingLowSeverity.setRange(0, 10)
         slippingLowSeverity.setValue(1)
 
-        RuleSettings.set(
-            "slipping.low_severity",
-            slippingLowSeverity.value(),
-        )
-
-        slippingLowSeverity.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "slipping.low_severity", int(v)
-            )
-        )
+        self._bind_rule_spinbox(slippingLowSeverity, "slipping.low_severity")
 
         slippingMediumSeverity = QSpinBox()
         slippingMediumSeverity.setRange(0, 10)
         slippingMediumSeverity.setValue(2)
 
-        RuleSettings.set(
-            "slipping.medium_severity",
-            slippingMediumSeverity.value(),
-        )
-
-        slippingMediumSeverity.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "slipping.medium_severity", int(v)
-            )
-        )
+        self._bind_rule_spinbox(slippingMediumSeverity, "slipping.medium_severity")
 
         slippingHighSeverity = QSpinBox()
         slippingHighSeverity.setRange(0, 10)
         slippingHighSeverity.setValue(3)
 
-        RuleSettings.set(
-            "slipping.high_severity",
-            slippingHighSeverity.value(),
-        )
-
-        slippingHighSeverity.valueChanged.connect(
-            lambda v: RuleSettings.set(
-                "slipping.high_severity", int(v)
-            )
-        )
+        self._bind_rule_spinbox(slippingHighSeverity, "slipping.high_severity")
 
         slippingGroup = QGroupBox("Slipping Opportunity Settings")
         slippingLayout = QVBoxLayout(slippingGroup)
@@ -401,9 +364,9 @@ class SettingsTab(QWidget):
         slippingForm.setHorizontalSpacing(10)
         slippingForm.setVerticalSpacing(8)
         slippingForm.addRow("Late stage threshold", slippingLateStage)
-        slippingForm.addRow("Slippage severity (low)", slippingLowSeverity)
-        slippingForm.addRow("Slippage severity (medium)", slippingMediumSeverity)
-        slippingForm.addRow("Slippage severity (high)", slippingHighSeverity)
+        slippingForm.addRow("Number of times postponed (low severity)", slippingLowSeverity)
+        slippingForm.addRow("Number of times postponed (medium severity)", slippingMediumSeverity)
+        slippingForm.addRow("Number of times postponed (high severity)", slippingHighSeverity)
 
         slippingLayout.addLayout(slippingForm)
         slippingLayout.addStretch(1)

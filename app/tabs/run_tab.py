@@ -19,7 +19,8 @@ from rules.default_rules import (
     StalenessRule,
     PortfolioEarlyStageConcentrationRule,
     RepEarlyStageConcentrationRule,
-    SlippingRule
+    SlippingRule,
+    AcctPerRepAboveThreshold
 )
 
 opportunity_rules = [
@@ -30,7 +31,7 @@ opportunity_rules = [
 
 opportunity_portfollio_rules = [PortfolioEarlyStageConcentrationRule]
 
-rep_rules = [RepEarlyStageConcentrationRule]
+rep_rules = [RepEarlyStageConcentrationRule, AcctPerRepAboveThreshold]
 
 
 class RunTab(QWidget):
