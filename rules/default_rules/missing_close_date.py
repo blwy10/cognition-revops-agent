@@ -4,6 +4,7 @@ from rules.severity import Severity
 from rules.rule_setting_field import RuleSettingField
 
 # Missing close dates
+RULE_ID = "missing_close_date"
 RULE_SETTINGS_GROUP = "Missing Close Date Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -84,6 +85,7 @@ def missing_close_date_explanation(metric_name: str, metric_value: dict) -> str:
 
 MissingCloseDateRule = Rule(
     rule_type="opportunity",
+    settings_id=RULE_ID,
     name="Missing close date",
     category="Pipeline Hygiene",
     metric=missing_close_date_metric,

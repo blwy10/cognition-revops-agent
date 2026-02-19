@@ -4,6 +4,7 @@ from rules.severity import Severity
 from rules.rule_settings import RuleSettings
 from rules.rule_setting_field import RuleSettingField
 
+RULE_ID = "slipping"
 RULE_SETTINGS_GROUP = "Slipping Opportunity Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -95,6 +96,7 @@ def slipping_explanation(metric_name: str, value: list) -> str:
 
 SlippingRule = Rule(
     rule_type="opportunity",
+    settings_id=RULE_ID,
     name="Slipping Opp",
     category="Forecast Risk",
     metric=slipping_metric,

@@ -5,6 +5,7 @@ from rules.rule_settings import RuleSettings
 from rules.severity import Severity
 from rules.rule_setting_field import RuleSettingField
 
+RULE_ID = "amount_outlier"
 RULE_SETTINGS_GROUP = "Amount Outlier Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -186,6 +187,7 @@ def amount_outlier_explanation(metric_name: str, metric_value: dict) -> str:
 
 AmountOutlierRule = Rule(
     rule_type="opportunity",
+    settings_id=RULE_ID,
     name="Amount outlier",
     category="Data Integrity",
     metric=amount_outlier_metric,

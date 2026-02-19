@@ -3,6 +3,7 @@ from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 from rules.rule_setting_field import RuleSettingField
 
+RULE_ID = "rep_early_stage_concentration"
 RULE_SETTINGS_GROUP = "Rep Early Stage Concentration Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -98,6 +99,7 @@ def rep_early_stage_concentration_explanation(metric_name: str, metric_value: di
 
 RepEarlyStageConcentrationRule = Rule(
     rule_type="rep",
+    settings_id=RULE_ID,
     name="Rep concentration",
     category="Pipeline Hygiene",
     metric=rep_early_stage_concentration_metric,

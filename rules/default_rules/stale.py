@@ -10,6 +10,7 @@ from rules.severity import Severity
 from rules.rule_setting_field import RuleSettingField
 
 # Stale opportunities
+RULE_ID = "stale_opportunity"
 RULE_SETTINGS_GROUP = "Stale Opportunity Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -81,6 +82,7 @@ def staleness_explanation(metric_name: str, value: dict) -> str:
 
 StalenessRule = Rule(
     rule_type="opportunity",
+    settings_id=RULE_ID,
     name="Stale Opp",
     category="Pipeline Hygiene",
     metric=staleness_metric,

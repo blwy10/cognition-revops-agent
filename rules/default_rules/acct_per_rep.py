@@ -3,6 +3,7 @@ from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 from rules.rule_setting_field import RuleSettingField
 
+RULE_ID = "acct_per_rep"
 RULE_SETTINGS_GROUP = "Accounts Per Rep Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -63,6 +64,7 @@ def acct_per_rep_explanation(metric_name: str, metric_value: int) -> str:
 
 AcctPerRepAboveThreshold = Rule(
     rule_type="rep",
+    settings_id=RULE_ID,
     name="Acct rep concentration",
     category="Territory Imbalance",
     metric=acct_per_rep_metric,

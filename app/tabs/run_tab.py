@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
+from rules.rule_settings import RuleSettings
 from rules.default_rules import (
     MissingCloseDateRule,
     StalenessRule,
@@ -45,6 +46,20 @@ rep_rules = [RepEarlyStageConcentrationRule, AcctPerRepAboveThreshold, PipelineP
 acct_rules = [NoOpps, UndercoverTam]
 
 acct_portfolio_rules = [DuplicateAcctRule]
+
+
+def _rule_enabled(rule) -> bool:
+    settings_id = getattr(rule, "settings_id", "")
+    if not isinstance(settings_id, str) or not settings_id.strip():
+        return True
+    key = f"rules.enabled.{settings_id.strip()}"
+    value = RuleSettings.get(key, True)
+    if isinstance(value, bool):
+        return value
+    s = str(value).strip().lower()
+    if s in ("0", "false", "no", "off"):
+        return False
+    return True
 
 class RunTab(QWidget):
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
@@ -164,6 +179,8 @@ class RunTab(QWidget):
         # Run opportunity-level rules
         for opp in self.state.opportunities:
             for rule in opportunity_rules:
+                if not _rule_enabled(rule):
+                    continue
                 try:
                     result = rule.run(opp, other_context=self.state.opportunity_history)
                 except Exception as e:
@@ -194,6 +211,8 @@ class RunTab(QWidget):
 
         # Run portfolio-level rules
         for rule in opportunity_portfollio_rules:
+            if not _rule_enabled(rule):
+                continue
             try:
                 result = rule.run(self.state.opportunities)
             except Exception as e:
@@ -225,6 +244,8 @@ class RunTab(QWidget):
         # Run rep-level rules
         for rep in self.state.reps:
             for rule in rep_rules:
+                if not _rule_enabled(rule):
+                    continue
                 try:
                     result = rule.run(rep, other_context=self.state.opportunities)
                 except Exception as e:
@@ -256,6 +277,8 @@ class RunTab(QWidget):
         # Run account-level rules
         for account in self.state.accounts:
             for rule in acct_rules:
+                if not _rule_enabled(rule):
+                    continue
                 try:
                     result = rule.run(account, other_context=self.state.opportunities)
                 except Exception as e:
@@ -286,6 +309,8 @@ class RunTab(QWidget):
         
         # Run global account rules
         for rule in acct_portfolio_rules:
+            if not _rule_enabled(rule):
+                continue
             try:
                 result = rule.run(self.state.accounts, other_context=self.state.opportunities)
             except Exception as e:

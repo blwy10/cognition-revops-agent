@@ -3,6 +3,7 @@ from rules.rule import Rule
 from rules.rule_settings import RuleSettings
 from rules.rule_setting_field import RuleSettingField
 
+RULE_ID = "portfolio_early_stage_concentration"
 RULE_SETTINGS_GROUP = "Portfolio Early Stage Concentration Settings"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -81,6 +82,7 @@ def portfolio_early_stage_concentration_explanation(metric_name: str, metric_val
 
 PortfolioEarlyStageConcentrationRule = Rule(
     rule_type="portfolio_opp",
+    settings_id=RULE_ID,
     name="Portfolio concentration",
     category="Pipeline Hygiene",
     metric=portfolio_early_stage_concentration_metric,

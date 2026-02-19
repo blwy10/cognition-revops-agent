@@ -12,6 +12,7 @@ class Rule:
         self,
         rule_type: str = "opportunity",
         *,
+        settings_id: str = "",
         name: str = "",
         category: str = "",
         responsible: Callable[[dict], str] | None = None,
@@ -23,6 +24,7 @@ class Rule:
         explanation: Callable[[str, Any], str] | None = None,
         resolution: str = "",
     ) -> None:
+        self._settings_id = settings_id
         self._name = name
         self._category = category
         self._rule_type = rule_type
@@ -34,6 +36,14 @@ class Rule:
         self._fields = list(fields)
         self._explanation = explanation or (lambda metric_name, value: "")
         self._resolution = resolution
+
+    @property
+    def settings_id(self) -> str:
+        return self._settings_id
+
+    @settings_id.setter
+    def settings_id(self, value: str) -> None:
+        self._settings_id = value
 
     @property
     def name(self) -> str:

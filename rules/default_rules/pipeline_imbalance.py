@@ -3,6 +3,7 @@ from rules.severity import Severity
 from rules.rule import Rule
 from rules.rule_setting_field import RuleSettingField
 
+RULE_ID = "pipeline_imbalance"
 RULE_SETTINGS_GROUP = "Rep pipeline imbalance"
 RULE_SETTINGS_FIELDS = [
     RuleSettingField(
@@ -64,6 +65,7 @@ def pipeline_per_rep_explanation(metric_name: str, metric_value: int) -> str:
 
 PipelinePerRepImbalance = Rule(
     rule_type="rep",
+    settings_id=RULE_ID,
     name="Pipeline imbalance",
     category="Territory Imbalance",
     metric=pipeline_per_rep_metric,

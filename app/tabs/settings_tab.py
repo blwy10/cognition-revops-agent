@@ -5,6 +5,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, QSettings
 from PySide6.QtWidgets import (
     QFileDialog,
+    QCheckBox,
     QFormLayout,
     QHBoxLayout,
     QLineEdit,
@@ -96,6 +97,25 @@ class SettingsTab(QWidget):
         # Persist user-chosen thresholds so the UI comes back with the same values.
         self._settings.setValue(self._rule_settings_key(key), int(value))
 
+    def _load_bool_setting(self, key: str) -> Optional[bool]:
+        qkey = self._rule_settings_key(key)
+        if not self._settings.contains(qkey):
+            return None
+        value = self._settings.value(qkey, None)
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        s = str(value).strip().lower()
+        if s in ("1", "true", "yes", "on"):
+            return True
+        if s in ("0", "false", "no", "off"):
+            return False
+        return None
+
+    def _persist_bool_setting(self, key: str, value: bool) -> None:
+        self._settings.setValue(self._rule_settings_key(key), bool(value))
+
     def _bind_rule_spinbox(self, spinbox: QSpinBox, key: str) -> None:
         # Central binding helper:
         # - Initialize UI from persisted settings (if any)
@@ -113,11 +133,32 @@ class SettingsTab(QWidget):
 
         spinbox.valueChanged.connect(_on_changed)
 
-    def _build_rule_settings_group(self, title: str, fields: list[RuleSettingField]) -> QGroupBox:
+    def _build_rule_settings_group(
+        self,
+        *,
+        title: str,
+        enabled_key: str,
+        fields: list[RuleSettingField],
+    ) -> QGroupBox:
         group = QGroupBox(title)
         layout = QVBoxLayout(group)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
+
+        enabled_checkbox = QCheckBox("Enabled")
+        enabled_checkbox.setChecked(True)
+        stored_enabled = self._load_bool_setting(enabled_key)
+        if stored_enabled is not None:
+            enabled_checkbox.setChecked(bool(stored_enabled))
+
+        RuleSettings.set(enabled_key, bool(enabled_checkbox.isChecked()))
+
+        def _on_enabled_changed(v: bool) -> None:
+            RuleSettings.set(enabled_key, bool(v))
+            self._persist_bool_setting(enabled_key, bool(v))
+
+        enabled_checkbox.toggled.connect(_on_enabled_changed)
+        layout.addWidget(enabled_checkbox)
 
         form = QFormLayout()
         form.setHorizontalSpacing(10)
@@ -137,11 +178,22 @@ class SettingsTab(QWidget):
     def _build_rule_settings_groups(self, rule_modules: list[object]) -> list[QGroupBox]:
         groups: list[QGroupBox] = []
         for module in rule_modules:
+            rule_id = getattr(module, "RULE_ID", None)
             title = getattr(module, "RULE_SETTINGS_GROUP", None)
             fields = getattr(module, "RULE_SETTINGS_FIELDS", None)
-            if not isinstance(title, str) or not isinstance(fields, list) or not fields:
+            if not isinstance(rule_id, str) or not rule_id.strip():
                 continue
-            groups.append(self._build_rule_settings_group(title, fields))
+            if not isinstance(title, str) or not isinstance(fields, list):
+                continue
+
+            enabled_key = f"rules.enabled.{rule_id.strip()}"
+            groups.append(
+                self._build_rule_settings_group(
+                    title=title,
+                    enabled_key=enabled_key,
+                    fields=fields,
+                )
+            )
         return groups
 
     def _build_persistence_group(self) -> QGroupBox:
