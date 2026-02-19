@@ -14,6 +14,9 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
+from rules.default_rules import StalenessRule
+
+opportunity_rules = [StalenessRule]
 
 
 class RunTab(QWidget):
