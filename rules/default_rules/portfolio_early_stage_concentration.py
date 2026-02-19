@@ -1,5 +1,6 @@
 from rules.severity import Severity
 from rules.rule import Rule
+from rules.rule_settings import RuleSettings
 
 
 def portfolio_early_stage_concentration_metric(opportunities: list[dict], *args, **kwargs) -> dict:
@@ -10,11 +11,32 @@ def portfolio_early_stage_concentration_metric(opportunities: list[dict], *args,
 def portfolio_early_stage_concentration_condition(metric_value: dict) -> Severity:
     total_opps = metric_value.get("total_opps", 0)
     stage_0_and_1_opps = metric_value.get("stage_0_and_1_opps", 0)
-    if total_opps == 0:
-        return Severity.NONE
-    if stage_0_and_1_opps / total_opps >= 0.5:
+    ratio = stage_0_and_1_opps / total_opps if total_opps else 0
+
+    low_pct = RuleSettings.get("portfolio_early_stage_concentration.low_pct", 35)
+    medium_pct = RuleSettings.get("portfolio_early_stage_concentration.medium_pct", 45)
+    high_pct = RuleSettings.get("portfolio_early_stage_concentration.high_pct", 60)
+
+    def _to_ratio_threshold(value: object) -> float:
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        if 0.0 <= v <= 1.0:
+            return v
+        return v / 100.0
+
+    low_threshold = _to_ratio_threshold(low_pct)
+    medium_threshold = _to_ratio_threshold(medium_pct)
+    high_threshold = _to_ratio_threshold(high_pct)
+
+    if ratio >= high_threshold:
         return Severity.HIGH
-    return Severity.MEDIUM
+    elif ratio >= medium_threshold:
+        return Severity.MEDIUM
+    elif ratio >= low_threshold:
+        return Severity.LOW
+    return Severity.NONE
 
 def portfolio_early_stage_concentration_responsible(opportunities: list[dict]) -> str:
     return '0 - Ops'

@@ -161,11 +161,67 @@ class SettingsTab(QWidget):
         missingCloseDateLayout.addLayout(missingCloseDateForm)
         missingCloseDateLayout.addStretch(1)
 
+        portfolioEarlyLowPct = QSpinBox()
+        portfolioEarlyLowPct.setRange(0, 100)
+        portfolioEarlyLowPct.setValue(35)
+
+        portfolioEarlyMediumPct = QSpinBox()
+        portfolioEarlyMediumPct.setRange(0, 100)
+        portfolioEarlyMediumPct.setValue(45)
+
+        portfolioEarlyHighPct = QSpinBox()
+        portfolioEarlyHighPct.setRange(0, 100)
+        portfolioEarlyHighPct.setValue(60)
+
+        RuleSettings.set(
+            "portfolio_early_stage_concentration.low_pct",
+            portfolioEarlyLowPct.value(),
+        )
+        RuleSettings.set(
+            "portfolio_early_stage_concentration.medium_pct",
+            portfolioEarlyMediumPct.value(),
+        )
+        RuleSettings.set(
+            "portfolio_early_stage_concentration.high_pct",
+            portfolioEarlyHighPct.value(),
+        )
+
+        portfolioEarlyLowPct.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "portfolio_early_stage_concentration.low_pct", int(v)
+            )
+        )
+        portfolioEarlyMediumPct.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "portfolio_early_stage_concentration.medium_pct", int(v)
+            )
+        )
+        portfolioEarlyHighPct.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "portfolio_early_stage_concentration.high_pct", int(v)
+            )
+        )
+
+        portfolioEarlyStageForm = QFormLayout()
+        portfolioEarlyStageForm.setHorizontalSpacing(10)
+        portfolioEarlyStageForm.setVerticalSpacing(8)
+        portfolioEarlyStageForm.addRow("Low pct", portfolioEarlyLowPct)
+        portfolioEarlyStageForm.addRow("Medium pct", portfolioEarlyMediumPct)
+        portfolioEarlyStageForm.addRow("High pct", portfolioEarlyHighPct)
+
+        portfolioEarlyStageGroup = QGroupBox("Portfolio Early Stage Concentration Settings")
+        portfolioEarlyStageLayout = QVBoxLayout(portfolioEarlyStageGroup)
+        portfolioEarlyStageLayout.setContentsMargins(16, 16, 16, 16)
+        portfolioEarlyStageLayout.setSpacing(12)
+        portfolioEarlyStageLayout.addLayout(portfolioEarlyStageForm)
+        portfolioEarlyStageLayout.addStretch(1)
+
         layout = QVBoxLayout(self)
         layout.addWidget(persistenceGroup)
         layout.addWidget(tamGroup)
         layout.addWidget(staleGroup)
         layout.addWidget(missingCloseDateGroup)
+        layout.addWidget(portfolioEarlyStageGroup)
         layout.addStretch(1)
 
         self.run_json_browse.clicked.connect(self._on_browse_run_json)

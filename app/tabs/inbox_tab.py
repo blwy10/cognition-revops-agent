@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QObject, QPoint, QSortFilterProxyModel, QTimer, Qt
+from PySide6.QtCore import QObject, QPoint, QSettings, QSortFilterProxyModel, QTimer, Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -56,10 +56,14 @@ class InboxSortProxyModel(QSortFilterProxyModel):
 
 class InboxTab(QWidget):
     COLUMNS = ["Severity", "Name", "Account", "Opportunity", "Category", "Owner", "Status", "Timestamp"]
+    _SORT_SETTINGS_GROUP = "inbox_table"
+    _SORT_COLUMN_KEY = "sort_column"
+    _SORT_ORDER_KEY = "sort_order"
 
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.state = state
+        self._settings = QSettings("cognition", "revops-analysis-agent")
 
         self._snooze_icon = self._make_flag_icon()
 
@@ -88,6 +92,7 @@ class InboxTab(QWidget):
         self.table.setModel(self.proxy_model)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+        self.table.horizontalHeader().sortIndicatorChanged.connect(self._on_sort_indicator_changed)
 
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -196,6 +201,7 @@ class InboxTab(QWidget):
         self._snooze_timer.timeout.connect(self._apply_snooze_expirations)
         self._snooze_timer.start()
 
+        self._restore_sort_settings()
         self._rebuild_model()
 
     def _rebuild_model(self) -> None:
@@ -228,6 +234,49 @@ class InboxTab(QWidget):
                 status_item.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
 
             self.model.appendRow(items)
+
+        self._apply_current_sort()
+
+    def _apply_current_sort(self) -> None:
+        header = self.table.horizontalHeader()
+        column = int(header.sortIndicatorSection())
+        order = header.sortIndicatorOrder()
+        self.proxy_model.sort(column, order)
+
+    def _restore_sort_settings(self) -> None:
+        self._settings.beginGroup(self._SORT_SETTINGS_GROUP)
+        stored_column = self._settings.value(self._SORT_COLUMN_KEY, None)
+        stored_order = self._settings.value(self._SORT_ORDER_KEY, None)
+        self._settings.endGroup()
+
+        if stored_column is None or stored_order is None:
+            self.table.sortByColumn(0, Qt.SortOrder.DescendingOrder)
+            return
+
+        try:
+            column = int(stored_column)
+        except Exception:
+            column = 0
+
+        try:
+            order_int = int(stored_order)
+            order = Qt.SortOrder(order_int)
+        except Exception:
+            order = Qt.SortOrder.DescendingOrder
+
+        if column < 0 or column >= len(self.COLUMNS):
+            column = 0
+
+        self.table.sortByColumn(column, order)
+
+    def _persist_sort_settings(self, *, column: int, order: Qt.SortOrder) -> None:
+        self._settings.beginGroup(self._SORT_SETTINGS_GROUP)
+        self._settings.setValue(self._SORT_COLUMN_KEY, int(column))
+        self._settings.setValue(self._SORT_ORDER_KEY, int(order.value))
+        self._settings.endGroup()
+
+    def _on_sort_indicator_changed(self, column: int, order: Qt.SortOrder) -> None:
+        self._persist_sort_settings(column=column, order=order)
 
     def _selected_issue_index(self) -> Optional[int]:
         selected = self.table.selectionModel().selectedRows()
