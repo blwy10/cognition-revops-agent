@@ -10,6 +10,7 @@ class RuleResult:
         metric_name: str,
         metric_value: float,
         timestamp: datetime,
+        explanation: str,
         resolution: str,
         severity: str,
     ) -> None:
@@ -20,6 +21,7 @@ class RuleResult:
         self._metric_name = metric_name
         self._metric_value = metric_value
         self._timestamp = timestamp
+        self._explanation = explanation
         self._resolution = resolution
         self._severity = severity
 
@@ -50,6 +52,10 @@ class RuleResult:
     @property
     def timestamp(self) -> datetime:
         return self._timestamp
+
+    @property
+    def explanation(self) -> str:
+        return self._explanation
 
     @property
     def resolution(self) -> str:

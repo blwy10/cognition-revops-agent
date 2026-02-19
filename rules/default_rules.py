@@ -35,6 +35,20 @@ def staleness_condition(days) -> Severity:
 def staleness_responsible(opp: dict) -> str:
     return opp['owner']
 
+def staleness_explanation(metric_name: str, value: float) -> str:
+    selected_threshold = 0
+    severity_label = None
+    if value > RuleSettings.get("stale_opportunity.high_days"):
+        selected_threshold = RuleSettings.get("stale_opportunity.high_days")
+        severity_label = Severity.HIGH
+    elif value > RuleSettings.get("stale_opportunity.medium_days"):
+        selected_threshold = RuleSettings.get("stale_opportunity.medium_days")
+        severity_label = Severity.MEDIUM
+    elif value > RuleSettings.get("stale_opportunity.low_days"):
+        selected_threshold = RuleSettings.get("stale_opportunity.low_days")
+        severity_label = Severity.LOW
+    return f"Days since last stage change is {value} days old, which is above the {severity_label.value.lower()} threshold of {selected_threshold} days"
+
 StalenessRule = Rule(
     name="Stale Opportunity",
     category="Pipeline Hygiene",
@@ -43,5 +57,6 @@ StalenessRule = Rule(
     responsible=staleness_responsible,
     fields=["stage"],
     metric_name='Days since last stage change (or since creation if no stage changes)',
+    explanation=staleness_explanation,
     resolution="Reach out to the sales rep to confirm the opportunity is still active.",
 )

@@ -18,6 +18,7 @@ class Rule:
         metric: Callable[[dict], float] | None = None,
         condition: Callable[[Any], Severity] | None = None,
         fields: Iterable[str] = (),
+        explanation: Callable[[str, float], str] | None = None,
         resolution: str = "",
     ) -> None:
         self._name = name
@@ -27,6 +28,7 @@ class Rule:
         self._metric = metric or (lambda obj: 0.0)
         self._condition = condition or (lambda value: Severity.NONE)
         self._fields = list(fields)
+        self._explanation = explanation or (lambda metric_name, value: "")
         self._resolution = resolution
 
     @property
@@ -102,6 +104,8 @@ class Rule:
         if severity == Severity.NONE:
             return None
 
+        explanation = self._explanation(self.metric_name, metric_value)
+
         return RuleResult(
             name=self.name,
             category=self.category,
@@ -112,4 +116,5 @@ class Rule:
             metric_value=metric_value,
             timestamp=datetime.now(),
             resolution=self.resolution,
+            explanation=explanation,
         )
