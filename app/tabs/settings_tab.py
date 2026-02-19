@@ -30,6 +30,7 @@ class SettingsTab(QWidget):
         persistenceGroup = self._build_persistence_group()
         tamGroup = self._build_tam_group()
         staleGroup = self._build_stale_group()
+        amountOutlierGroup = self._build_amount_outlier_group()
         missingCloseDateGroup = self._build_missing_close_date_group()
         portfolioEarlyStageGroup = self._build_portfolio_early_stage_group()
         repEarlyStageGroup = self._build_rep_early_stage_group()
@@ -42,6 +43,7 @@ class SettingsTab(QWidget):
         contentLayout.addWidget(persistenceGroup)
         contentLayout.addWidget(tamGroup)
         contentLayout.addWidget(staleGroup)
+        contentLayout.addWidget(amountOutlierGroup)
         contentLayout.addWidget(missingCloseDateGroup)
         contentLayout.addWidget(portfolioEarlyStageGroup)
         contentLayout.addWidget(repEarlyStageGroup)
@@ -175,6 +177,58 @@ class SettingsTab(QWidget):
         staleLayout.addLayout(staleForm)
         staleLayout.addStretch(1)
         return staleGroup
+
+    def _build_amount_outlier_group(self) -> QGroupBox:
+        amountOutlierGroup = QGroupBox("Amount Outlier Settings")
+        amountOutlierLayout = QVBoxLayout(amountOutlierGroup)
+        amountOutlierLayout.setContentsMargins(16, 16, 16, 16)
+        amountOutlierLayout.setSpacing(12)
+
+        amountOutlierForm = QFormLayout()
+        amountOutlierForm.setHorizontalSpacing(10)
+        amountOutlierForm.setVerticalSpacing(8)
+
+        highLow = QSpinBox()
+        highLow.setRange(0, 100000000)
+        highLow.setValue(300000)
+
+        highMedium = QSpinBox()
+        highMedium.setRange(0, 100000000)
+        highMedium.setValue(600000)
+
+        highHigh = QSpinBox()
+        highHigh.setRange(0, 100000000)
+        highHigh.setValue(1000000)
+
+        lowLow = QSpinBox()
+        lowLow.setRange(0, 100000000)
+        lowLow.setValue(60000)
+
+        lowMedium = QSpinBox()
+        lowMedium.setRange(0, 100000000)
+        lowMedium.setValue(30000)
+
+        lowHigh = QSpinBox()
+        lowHigh.setRange(0, 100000000)
+        lowHigh.setValue(20000)
+
+        self._bind_rule_spinbox(highLow, "amount_outlier.high_low_threshold")
+        self._bind_rule_spinbox(highMedium, "amount_outlier.high_medium_threshold")
+        self._bind_rule_spinbox(highHigh, "amount_outlier.high_high_threshold")
+        self._bind_rule_spinbox(lowLow, "amount_outlier.low_low_threshold")
+        self._bind_rule_spinbox(lowMedium, "amount_outlier.low_medium_threshold")
+        self._bind_rule_spinbox(lowHigh, "amount_outlier.low_high_threshold")
+
+        amountOutlierForm.addRow("High outlier threshold (LOW severity)", highLow)
+        amountOutlierForm.addRow("High outlier threshold (MEDIUM severity)", highMedium)
+        amountOutlierForm.addRow("High outlier threshold (HIGH severity)", highHigh)
+        amountOutlierForm.addRow("Low-end threshold (LOW severity)", lowLow)
+        amountOutlierForm.addRow("Low-end threshold (MEDIUM severity)", lowMedium)
+        amountOutlierForm.addRow("Low-end threshold (HIGH severity)", lowHigh)
+
+        amountOutlierLayout.addLayout(amountOutlierForm)
+        amountOutlierLayout.addStretch(1)
+        return amountOutlierGroup
 
     def _build_missing_close_date_group(self) -> QGroupBox:
         missingCloseDateGroup = QGroupBox("Missing Close Date Settings")

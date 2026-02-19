@@ -38,7 +38,7 @@ def acct_per_rep_explanation(metric_name: str, metric_value: int) -> str:
 AcctPerRepAboveThreshold = Rule(
     rule_type="rep",
     name="Acct rep concentration",
-    category="Pipeline Hygiene",
+    category="Territory Imbalance",
     metric=acct_per_rep_metric,
     condition=acct_per_rep_condition,
     responsible=acct_per_rep_responsible,

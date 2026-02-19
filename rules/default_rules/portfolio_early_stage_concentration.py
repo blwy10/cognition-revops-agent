@@ -54,7 +54,7 @@ def portfolio_early_stage_concentration_explanation(metric_name: str, metric_val
     return f"Early stage concentration detected with {stage_0_and_1_opps} opportunities in stages 0 and 1 out of {total_opps} total opportunities ({stage_0_and_1_opps/total_opps:.2%}), which makes it {severity.value.lower()} severity"
 
 PortfolioEarlyStageConcentrationRule = Rule(
-    rule_type="portfolio",
+    rule_type="portfolio_opp",
     name="Portfolio concentration",
     category="Pipeline Hygiene",
     metric=portfolio_early_stage_concentration_metric,

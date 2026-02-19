@@ -39,7 +39,7 @@ def pipeline_per_rep_explanation(metric_name: str, metric_value: int) -> str:
 PipelinePerRepImbalance = Rule(
     rule_type="rep",
     name="Pipeline imbalance",
-    category="Pipeline Hygiene",
+    category="Territory Imbalance",
     metric=pipeline_per_rep_metric,
     condition=pipeline_per_rep_condition,
     responsible=pipeline_per_rep_responsible,
