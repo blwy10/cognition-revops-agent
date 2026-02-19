@@ -3,6 +3,53 @@ from __future__ import annotations
 from rules.rule import Rule
 from rules.rule_settings import RuleSettings
 from rules.severity import Severity
+from rules.rule_setting_field import RuleSettingField
+
+RULE_SETTINGS_GROUP = "Amount Outlier Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="amount_outlier.high_low_threshold",
+        label="High outlier threshold (LOW severity)",
+        default=300000,
+        minimum=0,
+        maximum=100000000,
+    ),
+    RuleSettingField(
+        key="amount_outlier.high_medium_threshold",
+        label="High outlier threshold (MEDIUM severity)",
+        default=600000,
+        minimum=0,
+        maximum=100000000,
+    ),
+    RuleSettingField(
+        key="amount_outlier.high_high_threshold",
+        label="High outlier threshold (HIGH severity)",
+        default=1000000,
+        minimum=0,
+        maximum=100000000,
+    ),
+    RuleSettingField(
+        key="amount_outlier.low_low_threshold",
+        label="Low-end threshold (LOW severity)",
+        default=60000,
+        minimum=0,
+        maximum=100000000,
+    ),
+    RuleSettingField(
+        key="amount_outlier.low_medium_threshold",
+        label="Low-end threshold (MEDIUM severity)",
+        default=30000,
+        minimum=0,
+        maximum=100000000,
+    ),
+    RuleSettingField(
+        key="amount_outlier.low_high_threshold",
+        label="Low-end threshold (HIGH severity)",
+        default=20000,
+        minimum=0,
+        maximum=100000000,
+    ),
+]
 
 
 def amount_outlier_metric(opp: dict, *args, **kwargs) -> dict:

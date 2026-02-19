@@ -1,6 +1,32 @@
 from rules.severity import Severity
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
+from rules.rule_setting_field import RuleSettingField
+
+RULE_SETTINGS_GROUP = "Accounts Per Rep Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="acct_per_rep.low_severity",
+        label="Accounts owned > (low severity)",
+        default=6,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="acct_per_rep.medium_severity",
+        label="Accounts owned > (medium severity)",
+        default=10,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="acct_per_rep.high_severity",
+        label="Accounts owned > (high severity)",
+        default=15,
+        minimum=0,
+        maximum=100,
+    ),
+]
 
 def acct_per_rep_metric(rep: dict, opportunities: list[dict]) -> int:
     owned_by_rep = [opp for opp in opportunities if opp.get("owner") == rep.get("name")]

@@ -1,9 +1,27 @@
-
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 from rules.severity import Severity
+from rules.rule_setting_field import RuleSettingField
 
 # Missing close dates
+RULE_SETTINGS_GROUP = "Missing Close Date Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="missing_close_date.low_max_stage",
+        label="Highest stage for LOW severity",
+        default=1,
+        minimum=0,
+        maximum=6,
+    ),
+    RuleSettingField(
+        key="missing_close_date.medium_max_stage",
+        label="Highest stage for MEDIUM severity",
+        default=2,
+        minimum=0,
+        maximum=6,
+    ),
+]
+
 def missing_close_date_metric(opp: dict, *args, **kwargs) -> dict:
     return {"closeDate": opp.get("closeDate"), "stage": opp.get("stage")}
 

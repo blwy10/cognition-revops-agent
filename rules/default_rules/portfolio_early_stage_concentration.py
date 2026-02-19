@@ -1,6 +1,32 @@
 from rules.severity import Severity
 from rules.rule import Rule
 from rules.rule_settings import RuleSettings
+from rules.rule_setting_field import RuleSettingField
+
+RULE_SETTINGS_GROUP = "Portfolio Early Stage Concentration Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="portfolio_early_stage_concentration.low_pct",
+        label="Low pct",
+        default=35,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="portfolio_early_stage_concentration.medium_pct",
+        label="Medium pct",
+        default=45,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="portfolio_early_stage_concentration.high_pct",
+        label="High pct",
+        default=60,
+        minimum=0,
+        maximum=100,
+    ),
+]
 
 
 def portfolio_early_stage_concentration_metric(opportunities: list[dict], *args, **kwargs) -> dict:

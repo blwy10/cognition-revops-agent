@@ -1,6 +1,46 @@
 from rules.rule_settings import RuleSettings
 from rules.severity import Severity
 from rules.rule import Rule
+from rules.rule_setting_field import RuleSettingField
+
+RULE_SETTINGS_GROUP = "TAM Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="tam.revenue_per_developer",
+        label="Revenue per developer",
+        default=1000,
+        minimum=0,
+        maximum=2000,
+    ),
+    RuleSettingField(
+        key="tam.coverage_percentage",
+        label="Coverage percentage",
+        default=50,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="tam.coverage_low_severity_pct",
+        label="TAM coverage threshold (LOW severity)",
+        default=60,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="tam.coverage_medium_severity_pct",
+        label="TAM coverage threshold (MEDIUM severity)",
+        default=50,
+        minimum=0,
+        maximum=100,
+    ),
+    RuleSettingField(
+        key="tam.coverage_high_severity_pct",
+        label="TAM coverage threshold (HIGH severity)",
+        default=40,
+        minimum=0,
+        maximum=100,
+    ),
+]
 
 
 def undercover_tam_metric(acct: dict, opportunities: list[dict]) -> dict:

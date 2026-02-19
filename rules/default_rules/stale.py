@@ -7,8 +7,34 @@ import pandas as pd
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 from rules.severity import Severity
+from rules.rule_setting_field import RuleSettingField
 
 # Stale opportunities
+RULE_SETTINGS_GROUP = "Stale Opportunity Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="stale_opportunity.low_days",
+        label="Stale days (low)",
+        default=30,
+        minimum=0,
+        maximum=365,
+    ),
+    RuleSettingField(
+        key="stale_opportunity.medium_days",
+        label="Stale days (medium)",
+        default=60,
+        minimum=0,
+        maximum=365,
+    ),
+    RuleSettingField(
+        key="stale_opportunity.high_days",
+        label="Stale days (high)",
+        default=90,
+        minimum=0,
+        maximum=365,
+    ),
+]
+
 def staleness_metric(opp: dict, history: list[dict]) -> dict:
     df = pd.DataFrame(history)
     opp_history = df[(df['opportunity_id'] == opp['id']) & (df['field_name'] == 'stage')]

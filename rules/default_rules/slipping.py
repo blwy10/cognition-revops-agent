@@ -2,6 +2,39 @@ import pandas as pd
 from rules.rule import Rule
 from rules.severity import Severity
 from rules.rule_settings import RuleSettings
+from rules.rule_setting_field import RuleSettingField
+
+RULE_SETTINGS_GROUP = "Slipping Opportunity Settings"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="slipping.late_stage",
+        label="Late stage threshold",
+        default=5,
+        minimum=0,
+        maximum=6,
+    ),
+    RuleSettingField(
+        key="slipping.low_severity",
+        label="Number of times postponed (low severity)",
+        default=1,
+        minimum=0,
+        maximum=10,
+    ),
+    RuleSettingField(
+        key="slipping.medium_severity",
+        label="Number of times postponed (medium severity)",
+        default=2,
+        minimum=0,
+        maximum=10,
+    ),
+    RuleSettingField(
+        key="slipping.high_severity",
+        label="Number of times postponed (high severity)",
+        default=3,
+        minimum=0,
+        maximum=10,
+    ),
+]
 
 def slipping_metric(opp: dict, history: list[dict]) -> list:
     df = pd.DataFrame(history)

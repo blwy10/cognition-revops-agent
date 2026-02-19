@@ -1,6 +1,32 @@
 from rules.rule_settings import RuleSettings
 from rules.severity import Severity
 from rules.rule import Rule
+from rules.rule_setting_field import RuleSettingField
+
+RULE_SETTINGS_GROUP = "Rep pipeline imbalance"
+RULE_SETTINGS_FIELDS = [
+    RuleSettingField(
+        key="pipeline_imbalance.low_severity",
+        label="Rep pipeline imbalance threshold (low severity)",
+        default=500000,
+        minimum=0,
+        maximum=10000000,
+    ),
+    RuleSettingField(
+        key="pipeline_imbalance.medium_severity",
+        label="Rep pipeline imbalance threshold (medium severity)",
+        default=600000,
+        minimum=0,
+        maximum=10000000,
+    ),
+    RuleSettingField(
+        key="pipeline_imbalance.high_severity",
+        label="Rep pipeline imbalance threshold (high severity)",
+        default=800000,
+        minimum=0,
+        maximum=10000000,
+    ),
+]
 
 def pipeline_per_rep_metric(rep: dict, opportunities: list[dict]) -> int:
     return sum(opp.get("amount", 0) for opp in opportunities if opp.get("owner") == rep.get("name"))
