@@ -4,15 +4,14 @@ from typing import Optional
 
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QFormLayout,
-    QLineEdit,
     QSpinBox,
     QVBoxLayout,
     QWidget,
+    QGroupBox,
 )
 
+from app.rule_settings import RuleSettings
 from app.state import AppState
 
 
@@ -21,26 +20,38 @@ class SettingsTab(QWidget):
         super().__init__(parent)
         self.state = state
 
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(16, 16, 16, 16)
-        outer.setSpacing(12)
-        form = QFormLayout()
-        form.setHorizontalSpacing(10)
-        form.setVerticalSpacing(8)
+        tamGroup = QGroupBox("TAM Settings")
 
-        workspace = QLineEdit("Default Workspace")
-        model = QComboBox()
-        model.addItems(["Fast", "Balanced", "Thorough"])
-        max_records = QSpinBox()
-        max_records.setRange(1, 1_000_000)
-        max_records.setValue(5000)
-        notify = QCheckBox("Enable notifications")
-        notify.setChecked(True)
+        tamLayout = QVBoxLayout(tamGroup)
+        tamLayout.setContentsMargins(16, 16, 16, 16)
+        tamLayout.setSpacing(12)
+        tamForm = QFormLayout()
+        tamForm.setHorizontalSpacing(10)
+        tamForm.setVerticalSpacing(8)
 
-        form.addRow("Workspace", workspace)
-        form.addRow("Mode", model)
-        form.addRow("Max records", max_records)
-        form.addRow("Notifications", notify)
+        revPerDev = QSpinBox()
+        revPerDev.setRange(0, 2000)
+        revPerDev.setValue(1000)
+        coveragePct = QSpinBox()
+        coveragePct.setRange(0, 100)
+        coveragePct.setValue(50)
 
-        outer.addLayout(form)
-        outer.addStretch(1)
+        RuleSettings.set("tam.revenue_per_developer", revPerDev.value())
+        RuleSettings.set("tam.coverage_percentage", coveragePct.value())
+
+        revPerDev.valueChanged.connect(
+            lambda v: RuleSettings.set("tam.revenue_per_developer", int(v))
+        )
+        coveragePct.valueChanged.connect(
+            lambda v: RuleSettings.set("tam.coverage_percentage", int(v))
+        )
+
+        tamForm.addRow("Revenue per developer", revPerDev)
+        tamForm.addRow("Coverage percentage", coveragePct)
+
+        tamLayout.addLayout(tamForm)
+        tamLayout.addStretch(1)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(tamGroup)
+        layout.addStretch(1)
