@@ -16,11 +16,11 @@ class Rule:
         category: str = "",
         responsible: Callable[[dict], str] | None = None,
         metric_name: str = "",
-        metric: Callable[[dict], float] | None = None,
+        metric: Callable[[dict], Any] | None = None,
         format_metric_value: Callable[[Any], str] | None = None,
         condition: Callable[[Any], Severity] | None = None,
         fields: Iterable[str] = (),
-        explanation: Callable[[str, float], str] | None = None,
+        explanation: Callable[[str, Any], str] | None = None,
         resolution: str = "",
     ) -> None:
         self._name = name
@@ -76,11 +76,11 @@ class Rule:
         self._metric_name = value
 
     @property
-    def metric(self) -> Callable[[dict], float]:
+    def metric(self) -> Callable[[dict], Any]:
         return self._metric
 
     @metric.setter
-    def metric(self, value: Callable[[dict], float]) -> None:
+    def metric(self, value: Callable[[dict], Any]) -> None:
         self._metric = value
 
     @property

@@ -25,6 +25,38 @@ class SettingsTab(QWidget):
         super().__init__(parent)
         self.state = state
 
+        persistenceGroup = self._build_persistence_group()
+        tamGroup = self._build_tam_group()
+        staleGroup = self._build_stale_group()
+        missingCloseDateGroup = self._build_missing_close_date_group()
+        portfolioEarlyStageGroup = self._build_portfolio_early_stage_group()
+        repEarlyStageGroup = self._build_rep_early_stage_group()
+        slippingGroup = self._build_slipping_group()
+
+        contentWidget = QWidget()
+        contentLayout = QVBoxLayout(contentWidget)
+        contentLayout.addWidget(persistenceGroup)
+        contentLayout.addWidget(tamGroup)
+        contentLayout.addWidget(staleGroup)
+        contentLayout.addWidget(missingCloseDateGroup)
+        contentLayout.addWidget(portfolioEarlyStageGroup)
+        contentLayout.addWidget(repEarlyStageGroup)
+        contentLayout.addWidget(slippingGroup)
+        contentLayout.addStretch(1)
+
+        scrollArea = QScrollArea()
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setWidget(contentWidget)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(scrollArea)
+
+        self.run_json_browse.clicked.connect(self._on_browse_run_json)
+        self.run_json_reset.clicked.connect(self._on_reset_run_json)
+        self.run_json_path_edit.editingFinished.connect(self._on_run_json_editing_finished)
+        self.state.runJsonPathChanged.connect(self._on_state_run_json_path_changed)
+
+    def _build_persistence_group(self) -> QGroupBox:
         persistenceGroup = QGroupBox("Run State Persistence")
         persistenceLayout = QVBoxLayout(persistenceGroup)
         persistenceLayout.setContentsMargins(16, 16, 16, 16)
@@ -46,9 +78,10 @@ class SettingsTab(QWidget):
         persistenceForm.addRow("Run JSON file", path_row)
         persistenceLayout.addLayout(persistenceForm)
         persistenceLayout.addStretch(1)
+        return persistenceGroup
 
+    def _build_tam_group(self) -> QGroupBox:
         tamGroup = QGroupBox("TAM Settings")
-
         tamLayout = QVBoxLayout(tamGroup)
         tamLayout.setContentsMargins(16, 16, 16, 16)
         tamLayout.setSpacing(12)
@@ -78,9 +111,10 @@ class SettingsTab(QWidget):
 
         tamLayout.addLayout(tamForm)
         tamLayout.addStretch(1)
+        return tamGroup
 
+    def _build_stale_group(self) -> QGroupBox:
         staleGroup = QGroupBox("Stale Opportunity Settings")
-
         staleLayout = QVBoxLayout(staleGroup)
         staleLayout.setContentsMargins(16, 16, 16, 16)
         staleLayout.setSpacing(12)
@@ -122,9 +156,10 @@ class SettingsTab(QWidget):
 
         staleLayout.addLayout(staleForm)
         staleLayout.addStretch(1)
+        return staleGroup
 
+    def _build_missing_close_date_group(self) -> QGroupBox:
         missingCloseDateGroup = QGroupBox("Missing Close Date Settings")
-
         missingCloseDateLayout = QVBoxLayout(missingCloseDateGroup)
         missingCloseDateLayout.setContentsMargins(16, 16, 16, 16)
         missingCloseDateLayout.setSpacing(12)
@@ -140,7 +175,9 @@ class SettingsTab(QWidget):
         missingCloseDateMediumMaxStage.setRange(0, 6)
         missingCloseDateMediumMaxStage.setValue(2)
 
-        RuleSettings.set("missing_close_date.low_max_stage", missingCloseDateLowMaxStage.value())
+        RuleSettings.set(
+            "missing_close_date.low_max_stage", missingCloseDateLowMaxStage.value()
+        )
         RuleSettings.set(
             "missing_close_date.medium_max_stage", missingCloseDateMediumMaxStage.value()
         )
@@ -161,7 +198,9 @@ class SettingsTab(QWidget):
 
         missingCloseDateLayout.addLayout(missingCloseDateForm)
         missingCloseDateLayout.addStretch(1)
+        return missingCloseDateGroup
 
+    def _build_portfolio_early_stage_group(self) -> QGroupBox:
         portfolioEarlyLowPct = QSpinBox()
         portfolioEarlyLowPct.setRange(0, 100)
         portfolioEarlyLowPct.setValue(35)
@@ -210,13 +249,17 @@ class SettingsTab(QWidget):
         portfolioEarlyStageForm.addRow("Medium pct", portfolioEarlyMediumPct)
         portfolioEarlyStageForm.addRow("High pct", portfolioEarlyHighPct)
 
-        portfolioEarlyStageGroup = QGroupBox("Portfolio Early Stage Concentration Settings")
+        portfolioEarlyStageGroup = QGroupBox(
+            "Portfolio Early Stage Concentration Settings"
+        )
         portfolioEarlyStageLayout = QVBoxLayout(portfolioEarlyStageGroup)
         portfolioEarlyStageLayout.setContentsMargins(16, 16, 16, 16)
         portfolioEarlyStageLayout.setSpacing(12)
         portfolioEarlyStageLayout.addLayout(portfolioEarlyStageForm)
         portfolioEarlyStageLayout.addStretch(1)
+        return portfolioEarlyStageGroup
 
+    def _build_rep_early_stage_group(self) -> QGroupBox:
         repEarlyLowPct = QSpinBox()
         repEarlyLowPct.setRange(0, 100)
         repEarlyLowPct.setValue(35)
@@ -287,29 +330,85 @@ class SettingsTab(QWidget):
         repEarlyStageLayout.setSpacing(12)
         repEarlyStageLayout.addLayout(repEarlyStageForm)
         repEarlyStageLayout.addStretch(1)
+        return repEarlyStageGroup
+    
+    def _build_slipping_group(self) -> QGroupBox:
+        slippingLateStage = QSpinBox()
+        slippingLateStage.setRange(0, 6)
+        slippingLateStage.setValue(5)
 
-        contentWidget = QWidget()
-        contentLayout = QVBoxLayout(contentWidget)
-        contentLayout.addWidget(persistenceGroup)
-        contentLayout.addWidget(tamGroup)
-        contentLayout.addWidget(staleGroup)
-        contentLayout.addWidget(missingCloseDateGroup)
-        contentLayout.addWidget(portfolioEarlyStageGroup)
-        contentLayout.addWidget(repEarlyStageGroup)
-        contentLayout.addStretch(1)
+        RuleSettings.set(
+            "slipping.late_stage",
+            slippingLateStage.value(),
+        )
 
-        scrollArea = QScrollArea()
-        scrollArea.setWidgetResizable(True)
-        scrollArea.setWidget(contentWidget)
+        slippingLateStage.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "slipping.late_stage", int(v)
+            )
+        )
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(scrollArea)
+        slippingLowSeverity = QSpinBox()
+        slippingLowSeverity.setRange(0, 10)
+        slippingLowSeverity.setValue(1)
 
-        self.run_json_browse.clicked.connect(self._on_browse_run_json)
-        self.run_json_reset.clicked.connect(self._on_reset_run_json)
-        self.run_json_path_edit.editingFinished.connect(self._on_run_json_editing_finished)
-        self.state.runJsonPathChanged.connect(self._on_state_run_json_path_changed)
+        RuleSettings.set(
+            "slipping.low_severity",
+            slippingLowSeverity.value(),
+        )
 
+        slippingLowSeverity.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "slipping.low_severity", int(v)
+            )
+        )
+
+        slippingMediumSeverity = QSpinBox()
+        slippingMediumSeverity.setRange(0, 10)
+        slippingMediumSeverity.setValue(2)
+
+        RuleSettings.set(
+            "slipping.medium_severity",
+            slippingMediumSeverity.value(),
+        )
+
+        slippingMediumSeverity.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "slipping.medium_severity", int(v)
+            )
+        )
+
+        slippingHighSeverity = QSpinBox()
+        slippingHighSeverity.setRange(0, 10)
+        slippingHighSeverity.setValue(3)
+
+        RuleSettings.set(
+            "slipping.high_severity",
+            slippingHighSeverity.value(),
+        )
+
+        slippingHighSeverity.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "slipping.high_severity", int(v)
+            )
+        )
+
+        slippingGroup = QGroupBox("Slipping Opportunity Settings")
+        slippingLayout = QVBoxLayout(slippingGroup)
+        slippingLayout.setContentsMargins(16, 16, 16, 16)
+        slippingLayout.setSpacing(12)
+        slippingForm = QFormLayout()
+        slippingForm.setHorizontalSpacing(10)
+        slippingForm.setVerticalSpacing(8)
+        slippingForm.addRow("Late stage threshold", slippingLateStage)
+        slippingForm.addRow("Slippage severity (low)", slippingLowSeverity)
+        slippingForm.addRow("Slippage severity (medium)", slippingMediumSeverity)
+        slippingForm.addRow("Slippage severity (high)", slippingHighSeverity)
+
+        slippingLayout.addLayout(slippingForm)
+        slippingLayout.addStretch(1)
+        return slippingGroup
+    
     def _on_browse_run_json(self) -> None:
         path, _filter = QFileDialog.getSaveFileName(
             self,

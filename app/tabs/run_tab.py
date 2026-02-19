@@ -18,12 +18,14 @@ from rules.default_rules import (
     MissingCloseDateRule,
     StalenessRule,
     PortfolioEarlyStageConcentrationRule,
-    RepEarlyStageConcentrationRule
+    RepEarlyStageConcentrationRule,
+    SlippingRule
 )
 
 opportunity_rules = [
     StalenessRule,
     MissingCloseDateRule,
+    SlippingRule,
 ]
 
 opportunity_portfollio_rules = [PortfolioEarlyStageConcentrationRule]
