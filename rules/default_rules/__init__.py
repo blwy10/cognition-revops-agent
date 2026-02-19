@@ -7,5 +7,7 @@ from .acct_per_rep import AcctPerRepAboveThreshold
 from .pipeline_imbalance import PipelinePerRepImbalance
 from .duplicate_acct import DuplicateAcctRule
 from .amount_outlier import AmountOutlierRule
+from .no_opps import NoOpps
+from .undercover_tam import UndercoverTam
 
-__all__ = ["MissingCloseDateRule", "StalenessRule", "PortfolioEarlyStageConcentrationRule", "RepEarlyStageConcentrationRule", "SlippingRule", "AcctPerRepAboveThreshold", "PipelinePerRepImbalance", "DuplicateAcctRule", "AmountOutlierRule"]
+__all__ = ["MissingCloseDateRule", "StalenessRule", "PortfolioEarlyStageConcentrationRule", "RepEarlyStageConcentrationRule", "SlippingRule", "AcctPerRepAboveThreshold", "PipelinePerRepImbalance", "DuplicateAcctRule", "AmountOutlierRule", "NoOpps", "UndercoverTam"]

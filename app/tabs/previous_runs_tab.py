@@ -74,16 +74,19 @@ class PreviousRunsTab(QWidget):
         has_selection = bool(self.table.selectionModel().selectedRows())
         self.load_button.setEnabled(has_selection)
 
-    def _on_load_clicked(self) -> None:
+    def _get_selected_run(self) -> Optional[dict]:
         rows = self.table.selectionModel().selectedRows()
         if not rows:
-            return
+            return None
 
         row = rows[0].row()
         run_id_item = self.model.item(row, 0)
         run_id = int(run_id_item.data(Qt.UserRole))
-
         selected_run = next((r for r in self.state.runs if int(r.get("run_id", -1)) == run_id), None)
+        return selected_run if isinstance(selected_run, dict) else None
+
+    def _on_load_clicked(self) -> None:
+        selected_run = self._get_selected_run()
         if not isinstance(selected_run, dict):
             QMessageBox.warning(self, "Run Not Found", "The selected run could not be found in memory.")
             return
@@ -96,6 +99,8 @@ class PreviousRunsTab(QWidget):
                 "This run does not have an issues snapshot saved (it may be from an older version).",
             )
             return
+
+        run_id = int(selected_run.get("run_id"))
 
         self.state.selected_run_id = run_id
         self.state.issues = list(run_issues)

@@ -215,6 +215,12 @@ class AppState(QObject):
                 return datetime.fromisoformat(value.replace("Z", "+00:00"))
             except Exception:
                 return value
+        
+        # Add rep names to accounts
+        for acct in self.accounts:
+            rep_id = acct.get('repId')
+            if rep_id is not None and "owner" not in acct:
+                acct["owner"] = rep_name_by_id.get(int(rep_id), "")
 
         # Normalize opportunities for rules (owner/created_date/history)
         for o in self.opportunities:

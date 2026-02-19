@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 from typing import Optional
 
 from PySide6.QtCore import QObject, QPoint, QSettings, QSortFilterProxyModel, QTimer, Qt
@@ -8,7 +9,9 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
     QHBoxLayout,
+    QFileDialog,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QSplitter,
@@ -73,6 +76,11 @@ class InboxTab(QWidget):
         self.splitter = QSplitter(Qt.Horizontal, self)
         outer.addWidget(self.splitter)
 
+        self.left_widget = QWidget(self)
+        self.left_layout = QVBoxLayout(self.left_widget)
+        self.left_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_layout.setSpacing(10)
+
         self.table = QTableView(self)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -96,7 +104,13 @@ class InboxTab(QWidget):
 
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.splitter.addWidget(self.table)
+        self.left_layout.addWidget(self.table, 1)
+
+        self.export_csv_button = QPushButton("Export Issues to CSV…")
+        self.export_csv_button.setEnabled(False)
+        self.left_layout.addWidget(self.export_csv_button)
+
+        self.splitter.addWidget(self.left_widget)
 
         self.details_widget = QWidget(self)
         self.details_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -192,6 +206,8 @@ class InboxTab(QWidget):
         self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.state.issuesChanged.connect(self._rebuild_model)
 
+        self.export_csv_button.clicked.connect(self._on_export_csv_clicked)
+
         self.snooze_button.clicked.connect(self._on_snooze_clicked)
         self.resolve_button.clicked.connect(self._on_resolve_clicked)
         self.reopen_button.clicked.connect(self._on_reopen_clicked)
@@ -207,6 +223,8 @@ class InboxTab(QWidget):
     def _rebuild_model(self) -> None:
         self._apply_snooze_expirations(emit_signals=False)
         self.model.removeRows(0, self.model.rowCount())
+
+        self.export_csv_button.setEnabled(bool(self.state.issues))
 
         for idx, issue in enumerate(self.state.issues):
             items = [
@@ -236,6 +254,78 @@ class InboxTab(QWidget):
             self.model.appendRow(items)
 
         self._apply_current_sort()
+
+    def _on_export_csv_clicked(self) -> None:
+        issues = self.state.issues
+        if not issues:
+            return
+
+        run_id = getattr(self.state, "selected_run_id", None)
+        default_name = f"run-{run_id}-issues.csv" if run_id is not None else "issues.csv"
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Issues to CSV",
+            default_name,
+            "CSV Files (*.csv)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".csv"):
+            path = f"{path}.csv"
+
+        preferred_columns = [
+            "severity",
+            "name",
+            "account_name",
+            "opportunity_name",
+            "category",
+            "owner",
+            "status",
+            "timestamp",
+            "fields",
+            "metric_name",
+            "metric_value",
+            "explanation",
+            "resolution",
+            "snoozed_until",
+            "is_unread",
+        ]
+
+        extra_keys: set[str] = set()
+        for issue in issues:
+            if isinstance(issue, dict):
+                extra_keys.update(str(k) for k in issue.keys())
+        extra_columns = sorted(k for k in extra_keys if k not in preferred_columns)
+        columns = preferred_columns + extra_columns
+
+        def _cell(value) -> str:
+            if value is None:
+                return ""
+            if hasattr(value, "toString"):
+                try:
+                    return value.toString(Qt.ISODate)
+                except Exception:
+                    return str(value)
+            if isinstance(value, (list, tuple)):
+                return ", ".join(str(v) for v in value)
+            text = str(value)
+            text = text.replace("\r\n", "\n").replace("\r", "\n")
+            return text.replace("\n", "\\n")
+
+        try:
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=columns)
+                writer.writeheader()
+                for issue in issues:
+                    if not isinstance(issue, dict):
+                        continue
+                    row = {k: _cell(issue.get(k)) for k in columns}
+                    writer.writerow(row)
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Could not export CSV:\n{e}")
+            return
+
+        QMessageBox.information(self, "Export Complete", f"Exported issues to:\n{path}")
 
     def _apply_current_sort(self) -> None:
         header = self.table.horizontalHeader()

@@ -27,15 +27,36 @@ class SettingsTab(QWidget):
         self._settings = QSettings("cognition", "revops-analysis-agent")
         self._settings_group = "settings_tab"
 
+        # Each group below corresponds to a “rule” or a feature area. The widgets here
+        # only control thresholds/parameters; the actual analysis behavior lives in the
+        # corresponding rule implementations under `rules/`.
         persistenceGroup = self._build_persistence_group()
+
+        # Business assumptions used by the TAM-related rule.
         tamGroup = self._build_tam_group()
+
+        # Thresholds for flagging stale opportunities.
         staleGroup = self._build_stale_group()
+
+        # Thresholds for unusually large/small opportunity amounts.
         amountOutlierGroup = self._build_amount_outlier_group()
+
+        # Rules around missing close dates by stage.
         missingCloseDateGroup = self._build_missing_close_date_group()
+
+        # Portfolio-level concentration of early-stage pipeline.
         portfolioEarlyStageGroup = self._build_portfolio_early_stage_group()
+
+        # Rep-level concentration of early-stage pipeline.
         repEarlyStageGroup = self._build_rep_early_stage_group()
+
+        # Rep-level “pipeline imbalance” thresholds.
         repPipelineImbalanceGroup = self._build_pipeline_imbalance_group()
+
+        # Rep ownership load thresholds (accounts per rep).
         acctPerRepGroup = self._build_acct_per_rep_group()
+
+        # Thresholds for “slipping” opportunities (postponements at late stage).
         slippingGroup = self._build_slipping_group()
 
         contentWidget = QWidget()
@@ -65,9 +86,12 @@ class SettingsTab(QWidget):
         self.state.runJsonPathChanged.connect(self._on_state_run_json_path_changed)
 
     def _rule_settings_key(self, key: str) -> str:
+        # Namespace rule settings under this tab so QSettings keys don't collide.
         return f"{self._settings_group}/rule_settings/{key}"
 
     def _load_int_setting(self, key: str) -> Optional[int]:
+        # Read persisted integer settings (if present). Any parsing errors fall back
+        # to defaults (by returning None so callers can keep their initial values).
         qkey = self._rule_settings_key(key)
         if not self._settings.contains(qkey):
             return None
@@ -80,9 +104,14 @@ class SettingsTab(QWidget):
             return None
 
     def _persist_int_setting(self, key: str, value: int) -> None:
+        # Persist user-chosen thresholds so the UI comes back with the same values.
         self._settings.setValue(self._rule_settings_key(key), int(value))
 
     def _bind_rule_spinbox(self, spinbox: QSpinBox, key: str) -> None:
+        # Central binding helper:
+        # - Initialize UI from persisted settings (if any)
+        # - Update `RuleSettings` immediately so the next run uses the new values
+        # - Persist edits back to QSettings
         stored = self._load_int_setting(key)
         if stored is not None:
             spinbox.setValue(int(stored))
@@ -96,6 +125,8 @@ class SettingsTab(QWidget):
         spinbox.valueChanged.connect(_on_changed)
 
     def _build_persistence_group(self) -> QGroupBox:
+        # Controls where the app reads/writes run state (the JSON file used to
+        # persist the last run and allow resuming / reloading).
         persistenceGroup = QGroupBox("Run State Persistence")
         persistenceLayout = QVBoxLayout(persistenceGroup)
         persistenceLayout.setContentsMargins(16, 16, 16, 16)
@@ -120,6 +151,7 @@ class SettingsTab(QWidget):
         return persistenceGroup
 
     def _build_tam_group(self) -> QGroupBox:
+        # Parameters used for TAM computation/heuristics (e.g. revenue assumptions).
         tamGroup = QGroupBox("TAM Settings")
         tamLayout = QVBoxLayout(tamGroup)
         tamLayout.setContentsMargins(16, 16, 16, 16)
@@ -135,17 +167,36 @@ class SettingsTab(QWidget):
         coveragePct.setRange(0, 100)
         coveragePct.setValue(50)
 
+        tamCoverageLowPct = QSpinBox()
+        tamCoverageLowPct.setRange(0, 100)
+        tamCoverageLowPct.setValue(60)
+
+        tamCoverageMediumPct = QSpinBox()
+        tamCoverageMediumPct.setRange(0, 100)
+        tamCoverageMediumPct.setValue(50)
+
+        tamCoverageHighPct = QSpinBox()
+        tamCoverageHighPct.setRange(0, 100)
+        tamCoverageHighPct.setValue(40)
+
         self._bind_rule_spinbox(revPerDev, "tam.revenue_per_developer")
         self._bind_rule_spinbox(coveragePct, "tam.coverage_percentage")
+        self._bind_rule_spinbox(tamCoverageLowPct, "tam.coverage_low_severity_pct")
+        self._bind_rule_spinbox(tamCoverageMediumPct, "tam.coverage_medium_severity_pct")
+        self._bind_rule_spinbox(tamCoverageHighPct, "tam.coverage_high_severity_pct")
 
         tamForm.addRow("Revenue per developer", revPerDev)
         tamForm.addRow("Coverage percentage", coveragePct)
+        tamForm.addRow("TAM coverage threshold (LOW severity)", tamCoverageLowPct)
+        tamForm.addRow("TAM coverage threshold (MEDIUM severity)", tamCoverageMediumPct)
+        tamForm.addRow("TAM coverage threshold (HIGH severity)", tamCoverageHighPct)
 
         tamLayout.addLayout(tamForm)
         tamLayout.addStretch(1)
         return tamGroup
 
     def _build_stale_group(self) -> QGroupBox:
+        # Days-since-last-activity thresholds used to classify “stale” pipeline.
         staleGroup = QGroupBox("Stale Opportunity Settings")
         staleLayout = QVBoxLayout(staleGroup)
         staleLayout.setContentsMargins(16, 16, 16, 16)
@@ -179,6 +230,7 @@ class SettingsTab(QWidget):
         return staleGroup
 
     def _build_amount_outlier_group(self) -> QGroupBox:
+        # Upper/lower amount thresholds that trigger outlier flags at different severities.
         amountOutlierGroup = QGroupBox("Amount Outlier Settings")
         amountOutlierLayout = QVBoxLayout(amountOutlierGroup)
         amountOutlierLayout.setContentsMargins(16, 16, 16, 16)
@@ -231,6 +283,7 @@ class SettingsTab(QWidget):
         return amountOutlierGroup
 
     def _build_missing_close_date_group(self) -> QGroupBox:
+        # Controls when a missing close date becomes noteworthy, based on stage.
         missingCloseDateGroup = QGroupBox("Missing Close Date Settings")
         missingCloseDateLayout = QVBoxLayout(missingCloseDateGroup)
         missingCloseDateLayout.setContentsMargins(16, 16, 16, 16)
@@ -266,6 +319,8 @@ class SettingsTab(QWidget):
         return missingCloseDateGroup
 
     def _build_portfolio_early_stage_group(self) -> QGroupBox:
+        # Portfolio-level percentage of pipeline in early stages.
+        # Higher percentages can indicate over-weighting in early-stage deals.
         portfolioEarlyLowPct = QSpinBox()
         portfolioEarlyLowPct.setRange(0, 100)
         portfolioEarlyLowPct.setValue(35)
@@ -306,6 +361,8 @@ class SettingsTab(QWidget):
         return portfolioEarlyStageGroup
 
     def _build_rep_early_stage_group(self) -> QGroupBox:
+        # Rep-level early-stage concentration plus a minimum opp count so the rule
+        # doesn't overreact to tiny pipelines.
         repEarlyLowPct = QSpinBox()
         repEarlyLowPct.setRange(0, 100)
         repEarlyLowPct.setValue(35)
@@ -347,6 +404,8 @@ class SettingsTab(QWidget):
         return repEarlyStageGroup
 
     def _build_pipeline_imbalance_group(self) -> QGroupBox:
+        # Rep-level pipeline imbalance thresholds. Interpreted by the corresponding rule
+        # to identify reps whose pipeline distribution is skewed beyond these limits.
         lowThreshold = QSpinBox()
         lowThreshold.setRange(0, 10000000)
         lowThreshold.setValue(500000)
@@ -388,6 +447,7 @@ class SettingsTab(QWidget):
         return pipelineImbalanceGroup
 
     def _build_acct_per_rep_group(self) -> QGroupBox:
+        # Thresholds for flagging unusually high account ownership per rep.
         acctPerRepLow = QSpinBox()
         acctPerRepLow.setRange(0, 100)
         acctPerRepLow.setValue(6)
@@ -429,6 +489,8 @@ class SettingsTab(QWidget):
         return acctPerRepGroup
     
     def _build_slipping_group(self) -> QGroupBox:
+        # Thresholds for opportunities that keep getting pushed out (“slipping”).
+        # The late-stage value gates when postponements become noteworthy.
         slippingLateStage = QSpinBox()
         slippingLateStage.setRange(0, 6)
         slippingLateStage.setValue(5)

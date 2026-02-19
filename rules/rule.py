@@ -125,6 +125,9 @@ class Rule:
         if self.rule_type == "opportunity":
             account_name = obj.get("account_name", "")
             opportunity_name = obj.get("name", "")
+        elif self.rule_type == "account":
+            account_name = obj.get("name", "")
+            opportunity_name = ""
         else:
             account_name = ""
             opportunity_name = ""

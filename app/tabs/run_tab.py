@@ -5,10 +5,13 @@ from typing import Optional
 
 from PySide6.QtCore import QDateTime, QObject, QTimer
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
     QProgressBar,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +27,8 @@ from rules.default_rules import (
     AcctPerRepAboveThreshold,
     PipelinePerRepImbalance,
     DuplicateAcctRule,
+    NoOpps,
+    UndercoverTam,
 )
 
 opportunity_rules = [
@@ -37,6 +42,8 @@ opportunity_portfollio_rules = [PortfolioEarlyStageConcentrationRule]
 
 rep_rules = [RepEarlyStageConcentrationRule, AcctPerRepAboveThreshold, PipelinePerRepImbalance]
 
+acct_rules = [NoOpps, UndercoverTam]
+
 acct_portfolio_rules = [DuplicateAcctRule]
 
 class RunTab(QWidget):
@@ -44,12 +51,30 @@ class RunTab(QWidget):
         super().__init__(parent)
         self.state = state
 
+        self._run_in_progress = False
+        self._auto_timer = QTimer(self)
+        self._auto_timer.setSingleShot(False)
+        self._auto_timer.timeout.connect(self._on_auto_timer_timeout)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
         self.run_button = QPushButton("Run Analysis")
         layout.addWidget(self.run_button)
+
+        auto_row = QHBoxLayout()
+        self.auto_run_checkbox = QCheckBox("Auto-run")
+        auto_row.addWidget(self.auto_run_checkbox)
+
+        auto_row.addWidget(QLabel("Every"))
+        self.auto_run_interval_seconds = QSpinBox()
+        self.auto_run_interval_seconds.setRange(1, 86400)
+        self.auto_run_interval_seconds.setValue(60)
+        auto_row.addWidget(self.auto_run_interval_seconds)
+        auto_row.addWidget(QLabel("seconds"))
+        auto_row.addStretch(1)
+        layout.addLayout(auto_row)
 
         self.status_label = QLabel("Idle.")
         layout.addWidget(self.status_label)
@@ -62,12 +87,61 @@ class RunTab(QWidget):
         layout.addStretch(1)
 
         self.run_button.clicked.connect(self._on_run_clicked)
+        self.auto_run_checkbox.toggled.connect(self._on_auto_run_toggled)
+        self.auto_run_interval_seconds.valueChanged.connect(self._on_auto_interval_changed)
+
+    def closeEvent(self, event) -> None:
+        self._stop_auto_timer()
+        super().closeEvent(event)
+
+    def _set_auto_timer_interval_from_ui(self) -> None:
+        seconds = int(self.auto_run_interval_seconds.value())
+        self._auto_timer.setInterval(max(1, seconds) * 1000)
+
+    def _stop_auto_timer(self) -> None:
+        if self._auto_timer.isActive():
+            self._auto_timer.stop()
+
+    def _on_auto_run_toggled(self, checked: bool) -> None:
+        if not checked:
+            self._stop_auto_timer()
+            return
+
+        if not self.state.loaded_data_path:
+            QMessageBox.warning(self, "No Data Loaded", "Load a dataset first.")
+            self.auto_run_checkbox.blockSignals(True)
+            self.auto_run_checkbox.setChecked(False)
+            self.auto_run_checkbox.blockSignals(False)
+            return
+
+        self._set_auto_timer_interval_from_ui()
+        self._auto_timer.start()
+
+    def _on_auto_interval_changed(self, _value: int) -> None:
+        if not self._auto_timer.isActive():
+            return
+        self._set_auto_timer_interval_from_ui()
+        self._auto_timer.start()
+
+    def _on_auto_timer_timeout(self) -> None:
+        if self._run_in_progress:
+            return
+        if not self.state.loaded_data_path:
+            self._stop_auto_timer()
+            self.auto_run_checkbox.blockSignals(True)
+            self.auto_run_checkbox.setChecked(False)
+            self.auto_run_checkbox.blockSignals(False)
+            return
+        self._on_run_clicked()
 
     def _on_run_clicked(self) -> None:
+        if self._run_in_progress:
+            return
         if not self.state.loaded_data_path:
             QMessageBox.warning(self, "No Data Loaded", "Load a dataset first.")
             return
 
+        self._run_in_progress = True
         self.run_button.setEnabled(False)
         self.status_label.setText("Run in progress…")
         self.progress.setRange(0, 0)
@@ -179,6 +253,37 @@ class RunTab(QWidget):
                     }
                 )
         
+        # Run account-level rules
+        for account in self.state.accounts:
+            for rule in acct_rules:
+                try:
+                    result = rule.run(account, other_context=self.state.opportunities)
+                except Exception as e:
+                    print(e)
+                    raise
+
+                if result is None:
+                    continue
+
+                issues.append(
+                    {
+                        "severity": str(result.severity),
+                        "name": str(result.name),
+                        "account_name": str(result.account_name),
+                        "opportunity_name": str(result.opportunity_name),
+                        "category": str(result.category),
+                        "owner": str(result.responsible),
+                        "fields": list(result.fields),
+                        "metric_name": str(result.metric_name),
+                        "metric_value": result.formatted_metric_value,
+                        "explanation": str(result.explanation),
+                        "resolution": str(result.resolution),
+                        "status": "Open",
+                        "timestamp": QDateTime.currentDateTime(),
+                        "is_unread": True,
+                    }
+                )
+        
         # Run global account rules
         for rule in acct_portfolio_rules:
             try:
@@ -230,3 +335,5 @@ class RunTab(QWidget):
             self.state.save_run_state_to_disk()
         except Exception:
             pass
+
+        self._run_in_progress = False
