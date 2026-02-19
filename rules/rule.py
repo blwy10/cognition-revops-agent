@@ -1,19 +1,34 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, Callable, Iterable, Optional
+
 from .rule_result import RuleResult
 from .severity import Severity
-from datetime import datetime
+
 
 class Rule:
-    def __init__(self):
-        self._name: str = ""
-        self._category: str = ""
-        self._responsible: callable = lambda obj: ""
-        self._metric_name: str = ""
-        self._metric: callable = lambda obj: 0.0
-        self._condition: callable = lambda obj: Severity.NONE
-        self._fields: list[str] = []
-        self._resolution: str = ""
-        self._other_context: dict = {}
-    
+    def __init__(
+        self,
+        *,
+        name: str = "",
+        category: str = "",
+        responsible: Callable[[dict], str] | None = None,
+        metric_name: str = "",
+        metric: Callable[[dict], float] | None = None,
+        condition: Callable[[Any], Severity] | None = None,
+        fields: Iterable[str] = (),
+        resolution: str = "",
+    ) -> None:
+        self._name = name
+        self._category = category
+        self._responsible = responsible or (lambda obj: "")
+        self._metric_name = metric_name
+        self._metric = metric or (lambda obj: 0.0)
+        self._condition = condition or (lambda value: Severity.NONE)
+        self._fields = list(fields)
+        self._resolution = resolution
+
     @property
     def name(self) -> str:
         return self._name
@@ -21,7 +36,7 @@ class Rule:
     @name.setter
     def name(self, value: str) -> None:
         self._name = value
-    
+
     @property
     def category(self) -> str:
         return self._category
@@ -31,11 +46,11 @@ class Rule:
         self._category = value
 
     @property
-    def responsible(self) -> callable:
+    def responsible(self) -> Callable[[dict], str]:
         return self._responsible
 
     @responsible.setter
-    def responsible(self, value: callable) -> None:
+    def responsible(self, value: Callable[[dict], str]) -> None:
         self._responsible = value
 
     @property
@@ -47,21 +62,21 @@ class Rule:
         self._metric_name = value
 
     @property
-    def metric(self) -> callable:
+    def metric(self) -> Callable[[dict], float]:
         return self._metric
 
     @metric.setter
-    def metric(self, value: callable) -> None:
+    def metric(self, value: Callable[[dict], float]) -> None:
         self._metric = value
-    
+
     @property
-    def condition(self) -> callable:
+    def condition(self) -> Callable[[Any], Severity]:
         return self._condition
 
     @condition.setter
-    def condition(self, value: callable) -> None:
+    def condition(self, value: Callable[[Any], Severity]) -> None:
         self._condition = value
-    
+
     @property
     def fields(self) -> list[str]:
         return self._fields
@@ -69,35 +84,30 @@ class Rule:
     @fields.setter
     def fields(self, value: list[str]) -> None:
         self._fields = value
-    
+
     @property
     def resolution(self) -> str:
         return self._resolution
-    
+
     @resolution.setter
     def resolution(self, value: str) -> None:
         self._resolution = value
 
-    @property
-    def other_context(self) -> dict:
-        return self._other_context
-    
-    @other_context.setter
-    def other_context(self, value: dict) -> None:
-        self._other_context = value
-    
-    def run(self, obj: dict) -> RuleResult | None:
-        metric_value = self.metric(obj)
-        severity =  self.condition(metric_value)
+    def run(self, obj: dict, *, other_context: dict | None = None) -> RuleResult | None:
+        if other_context is None:
+            metric_value = self.metric(obj)
+        else:
+            metric_value = self.metric(obj, other_context)
+        severity = self.condition(metric_value)
         if severity == Severity.NONE:
             return None
-        
+
         return RuleResult(
             name=self.name,
             category=self.category,
             responsible=self.responsible(obj),
-            severity=severity,
-            fields=self.fields,
+            severity=severity.value if hasattr(severity, "value") else str(severity),
+            fields=tuple(self.fields),
             metric_name=self.metric_name,
             metric_value=metric_value,
             timestamp=datetime.now(),

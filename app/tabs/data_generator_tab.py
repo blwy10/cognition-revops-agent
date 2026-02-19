@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
@@ -31,39 +30,41 @@ class DataGeneratorTab(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        data_group = QGroupBox("Data")
-        data_layout = QVBoxLayout(data_group)
-        data_layout.setContentsMargins(12, 12, 12, 12)
-        data_layout.setSpacing(10)
-        layout.addWidget(data_group)
+        generation_group = QGroupBox("Data Generation")
+        generation_layout = QVBoxLayout(generation_group)
+        generation_layout.setContentsMargins(12, 12, 12, 12)
+        generation_layout.setSpacing(10)
+        layout.addWidget(generation_group)
 
-        output_row = QHBoxLayout()
-        output_row.setSpacing(8)
-        self.select_output_button = QPushButton("Select JSON Data File…")
-        self.output_path_edit = QLineEdit()
-        self.output_path_edit.setReadOnly(True)
-        output_row.addWidget(self.select_output_button)
-        output_row.addWidget(self.output_path_edit, 1)
-        data_layout.addLayout(output_row)
-
-        controls_row = QHBoxLayout()
-        controls_row.setSpacing(8)
+        generation_controls_row = QHBoxLayout()
+        generation_controls_row.setSpacing(8)
         self.generate_button = QPushButton("Generate Dummy Data…")
+        generation_controls_row.addWidget(self.generate_button)
+        generation_controls_row.addStretch(1)
+        generation_layout.addLayout(generation_controls_row)
+
+        self.output_status_label = QLabel()
+        self.output_status_label.setWordWrap(True)
+        generation_layout.addWidget(self.output_status_label)
+
+        loading_group = QGroupBox("Data Loading")
+        loading_layout = QVBoxLayout(loading_group)
+        loading_layout.setContentsMargins(12, 12, 12, 12)
+        loading_layout.setSpacing(10)
+        layout.addWidget(loading_group)
+
+        loading_controls_row = QHBoxLayout()
+        loading_controls_row.setSpacing(8)
         self.load_button = QPushButton("Load Existing Data…")
-        controls_row.addWidget(self.generate_button)
-        controls_row.addWidget(self.load_button)
-        controls_row.addStretch(1)
-        data_layout.addLayout(controls_row)
+        loading_controls_row.addWidget(self.load_button)
+        loading_controls_row.addStretch(1)
+        loading_layout.addLayout(loading_controls_row)
 
         self.loaded_status_label = QLabel()
         self.loaded_status_label.setWordWrap(True)
-        self.output_status_label = QLabel()
-        self.output_status_label.setWordWrap(True)
-        data_layout.addWidget(self.loaded_status_label)
-        data_layout.addWidget(self.output_status_label)
+        loading_layout.addWidget(self.loaded_status_label)
         layout.addStretch(1)
 
-        self.select_output_button.clicked.connect(self._on_select_output)
         self.load_button.clicked.connect(self._on_load_existing)
         self.generate_button.clicked.connect(self._on_generate)
 
@@ -73,7 +74,6 @@ class DataGeneratorTab(QWidget):
         self._sync_from_state()
 
     def _sync_from_state(self) -> None:
-        self.output_path_edit.setText(self.state.output_data_path or "")
         self._update_status()
 
     def _update_status(self) -> None:
@@ -84,18 +84,6 @@ class DataGeneratorTab(QWidget):
 
     def _on_state_paths_changed(self, _path: str) -> None:
         self._sync_from_state()
-
-    def _on_select_output(self) -> None:
-        path, _filter = QFileDialog.getSaveFileName(
-            self,
-            "Select JSON Data File",
-            self.state.output_data_path or "",
-            "JSON Files (*.json)",
-        )
-        if not path:
-            return
-        self.state.output_data_path = path
-        self.state.outputPathChanged.emit(path)
 
     def _on_load_existing(self) -> None:
         path, _filter = QFileDialog.getOpenFileName(
@@ -108,11 +96,19 @@ class DataGeneratorTab(QWidget):
             return
         self.state.loaded_data_path = path
         self.state.loadedDataChanged.emit(path)
+        self.state.load_json_data(path)
 
     def _on_generate(self) -> None:
-        if not self.state.output_data_path:
-            QMessageBox.warning(self, "Missing JSON Data File", "Select a JSON data file first.")
+        path, _filter = QFileDialog.getSaveFileName(
+            self,
+            "Select JSON Data File",
+            self.state.output_data_path or "",
+            "JSON Files (*.json)",
+        )
+        if not path:
             return
+        self.state.output_data_path = path
+        self.state.outputPathChanged.emit(path)
 
         output_path = self.state.output_data_path
         if os.path.exists(output_path):
@@ -141,3 +137,4 @@ class DataGeneratorTab(QWidget):
 
         self.state.loaded_data_path = output_path
         self.state.loadedDataChanged.emit(output_path)
+        self.state.load_json_data(output_path)

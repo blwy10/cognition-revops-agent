@@ -1,13 +1,17 @@
+from __future__ import annotations
+ 
+from datetime import datetime
+ 
+import pandas as pd
+ 
 from rules.rule_settings import RuleSettings
 from .rule import Rule
-from .rule import Severity
-import pandas as pd
-from datetime import datetime
+from .severity import Severity
 
 # Stale opportunities
 def staleness_metric(opp: dict, history: list[dict]) -> int:
     df = pd.DataFrame(history)
-    opp_history = df[df['opportunity_id'] == opp['id'] & df['field_name'] == 'stage']
+    opp_history = df[(df['opportunity_id'] == opp['id']) & (df['field_name'] == 'stage')]
     if opp_history.empty:
         last_known_stage = opp['stage']
         last_change_date = opp['created_date']
@@ -16,15 +20,15 @@ def staleness_metric(opp: dict, history: list[dict]) -> int:
         last_known_stage, last_change_date = most_recent['new_value'], most_recent['change_date']
     if last_known_stage != opp['stage']:
         return 0
-    days_since_last_change = (datetime.now() - last_change_date).days
+    days_since_last_change = (datetime.today().date() - last_change_date.date()).days
     return days_since_last_change
 
 def staleness_condition(days) -> Severity:
-    if days > RuleSettings.get('stale_opportunity.high_days'):
+    if days > RuleSettings.get("stale_opportunity.high_days"):
         return Severity.HIGH
-    elif days > RuleSettings.get('stale_opportunity.medium_days'):
+    elif days > RuleSettings.get("stale_opportunity.medium_days"):
         return Severity.MEDIUM
-    elif days > RuleSettings.get('stale_opportunity.low_days'):
+    elif days > RuleSettings.get("stale_opportunity.low_days"):
         return Severity.LOW
     return Severity.NONE
 

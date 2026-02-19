@@ -31,6 +31,7 @@ class Opportunity(TypedDict):
     name: str
     amount: int
     stage: str
+    created_date: str
     closeDate: Optional[str]
     repId: int
     accountId: int

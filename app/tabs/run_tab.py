@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import random
+from typing import Any
 from typing import Optional
 
 from PySide6.QtCore import QDateTime, QObject, QTimer
@@ -65,29 +65,38 @@ class RunTab(QWidget):
         if self.state.runs:
             next_id = max(r["run_id"] for r in self.state.runs) + 1
 
-        issues_count = random.randint(1, 10)
+        issues: list[dict[str, Any]] = []
+        for opp in self.state.opportunities:
+            for rule in opportunity_rules:
+                try:
+                    result = rule.run(opp, other_context=self.state.opportunity_history)
+                except Exception as e:
+                    # Don't fail the entire run due to a single rule/opportunity.
+                    result = None
+                    QMessageBox.warning(self, "Rule Error", f"Rule '{getattr(rule, 'name', '')}' failed: {e}")
+
+                if result is None:
+                    continue
+
+                issues.append(
+                    {
+                        "severity": str(result.severity),
+                        "category": str(result.category),
+                        "owner": str(result.responsible),
+                        "status": "Open",
+                        "timestamp": QDateTime.currentDateTime(),
+                        "is_unread": True,
+                    }
+                )
+
+        self.state.issues = issues
+        self.state.issuesChanged.emit()
+
         self.state.runs.append(
-            {"run_id": next_id, "datetime": QDateTime.currentDateTime(), "issues_count": issues_count}
+            {
+                "run_id": next_id,
+                "datetime": QDateTime.currentDateTime(),
+                "issues_count": len(issues),
+            }
         )
         self.state.runsChanged.emit()
-
-        now = QDateTime.currentDateTime()
-        self.state.issues = [
-            {
-                "severity": "High" if issues_count >= 7 else "Medium",
-                "category": "Pipeline",
-                "owner": "Sales Ops",
-                "status": "Open",
-                "timestamp": now,
-                "is_unread": True,
-            },
-            {
-                "severity": "Low",
-                "category": "CRM Hygiene",
-                "owner": "RevOps",
-                "status": "Backlog",
-                "timestamp": now.addSecs(-300),
-                "is_unread": True,
-            },
-        ]
-        self.state.issuesChanged.emit()

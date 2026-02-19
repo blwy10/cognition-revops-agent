@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import datetime as _dt
 
 from . import settings
 from .io import parse_state_region_mapping, read_json, read_text_list
@@ -71,6 +72,20 @@ def _generate_opportunity_history(
             prev_close = nxt_close
 
     return history
+
+
+def _clamp_ymd_min(value: str, min_value: str) -> str:
+    if value < min_value:
+        return min_value
+    return value
+
+
+def _is_ymd(s: str) -> bool:
+    try:
+        _dt.date.fromisoformat(s)
+        return True
+    except Exception:
+        return False
 
 
 def _ensure_unique_names(items: list[dict], *, kind: str) -> None:
@@ -517,5 +532,39 @@ def generate(seed: int | None = None):
             r["quota"] = _clamp_int(round(quota), settings.QUOTA_MIN, settings.QUOTA_MAX)
 
     opportunity_history = _generate_opportunity_history(rng, opportunities, stages=stages)
+
+    # created_date must be present for each opportunity and must be <= 2026-02-18.
+    # Enforce that closeDate and any history dates (and closeDate history values) are not before created_date.
+    created_w = settings.OPPORTUNITY_CREATED_WINDOW
+    created_by_opp_id: dict[int, str] = {}
+    for o in opportunities:
+        created = rng.date_between(created_w.start, created_w.end)
+        o["created_date"] = created
+        created_by_opp_id[int(o["id"])] = created
+
+        close_date = o.get("closeDate")
+        if close_date is not None:
+            close_str = str(close_date)
+            if _is_ymd(close_str):
+                o["closeDate"] = _clamp_ymd_min(close_str, created)
+
+    for h in opportunity_history:
+        opp_id = int(h.get("opportunity_id"))
+        created = created_by_opp_id.get(opp_id)
+        if not created:
+            continue
+
+        change_date = str(h.get("change_date") or "")
+        if _is_ymd(change_date):
+            h["change_date"] = _clamp_ymd_min(change_date, created)
+
+        if str(h.get("field_name") or "") == "closeDate":
+            for k in ("old_value", "new_value"):
+                v = h.get(k)
+                if v is None:
+                    continue
+                s = str(v)
+                if _is_ymd(s):
+                    h[k] = _clamp_ymd_min(s, created)
 
     return reps, accounts, opportunities, territories, opportunity_history

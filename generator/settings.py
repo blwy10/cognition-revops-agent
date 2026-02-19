@@ -85,6 +85,9 @@ FUTURE_CLOSE_WINDOW = DateWindow(start="2026-02-19", end="2026-09-30")
 RECENT_CLOSE_PCT = 0.10
 MISSING_CLOSE_PCT = 0.05
 
+# Opportunity created_date window (must be <= 2026-02-18)
+OPPORTUNITY_CREATED_WINDOW = DateWindow(start="2024-07-01", end="2026-02-18")
+
 OPPORTUNITY_HISTORY_CHANGE_WINDOW = DateWindow(start="2025-10-01", end="2026-02-18")
 
 # Global pipeline target (after per-account TAM enforcement)
