@@ -1,3 +1,4 @@
+from models import Opportunity, Rep
 from rules.rule_settings import RuleSettings
 from rules.severity import Severity
 from rules.rule import Rule
@@ -29,8 +30,8 @@ RULE_SETTINGS_FIELDS = [
     ),
 ]
 
-def pipeline_per_rep_metric(rep: dict, opportunities: list[dict]) -> int:
-    return sum(opp.get("amount", 0) for opp in opportunities if opp.get("owner") == rep.get("name"))
+def pipeline_per_rep_metric(rep: Rep, opportunities: list[Opportunity]) -> int:
+    return sum(opp.amount for opp in opportunities if opp.owner == rep.name)
 
 def pipeline_per_rep_condition(metric_value: int) -> Severity:
     low = RuleSettings.get("pipeline_imbalance.low_severity", 500000)
@@ -45,7 +46,7 @@ def pipeline_per_rep_condition(metric_value: int) -> Severity:
         return Severity.LOW
     return Severity.NONE
 
-def pipeline_per_rep_responsible(rep: dict) -> str:
+def pipeline_per_rep_responsible(rep: Rep) -> str:
     return "0 - Ops"
 
 def pipeline_per_rep_format_value(metric_value: int) -> str:

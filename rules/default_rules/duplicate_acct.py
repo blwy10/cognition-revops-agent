@@ -1,9 +1,10 @@
 from collections import Counter
+from models import Account
 from rules.severity import Severity
 from rules.rule import Rule
 
-def duplicate_acct_metric(accounts: list[dict], *args, **kwargs) -> int:
-    c = Counter(acc.get("name") for acc in accounts)
+def duplicate_acct_metric(accounts: list[Account], *args, **kwargs) -> int:
+    c = Counter(acc.name for acc in accounts)
     counter = 0
     for count in c.values():
         counter += count - 1
@@ -14,7 +15,7 @@ def duplicate_acct_condition(metric_value: int) -> Severity:
         return Severity.HIGH
     return Severity.NONE
 
-def duplicate_acct_responsible(accounts: list[dict]) -> str:
+def duplicate_acct_responsible(accounts: list[Account]) -> str:
     return '0 - Ops'
 
 def duplicate_acct_explanation(metric_name: str, metric_value: int) -> str:

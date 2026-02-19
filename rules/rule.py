@@ -15,9 +15,9 @@ class Rule:
         settings_id: str = "",
         name: str = "",
         category: str = "",
-        responsible: Callable[[dict], str] | None = None,
+        responsible: Callable[[Any], str] | None = None,
         metric_name: str = "",
-        metric: Callable[[dict], Any] | None = None,
+        metric: Callable[[Any], Any] | None = None,
         format_metric_value: Callable[[Any], str] | None = None,
         condition: Callable[[Any], Severity] | None = None,
         fields: Iterable[str] = (),
@@ -70,11 +70,11 @@ class Rule:
         self._rule_type = value
 
     @property
-    def responsible(self) -> Callable[[dict], str]:
+    def responsible(self) -> Callable[[Any], str]:
         return self._responsible
 
     @responsible.setter
-    def responsible(self, value: Callable[[dict], str]) -> None:
+    def responsible(self, value: Callable[[Any], str]) -> None:
         self._responsible = value
 
     @property
@@ -86,11 +86,11 @@ class Rule:
         self._metric_name = value
 
     @property
-    def metric(self) -> Callable[[dict], Any]:
+    def metric(self) -> Callable[[Any], Any]:
         return self._metric
 
     @metric.setter
-    def metric(self, value: Callable[[dict], Any]) -> None:
+    def metric(self, value: Callable[[Any], Any]) -> None:
         self._metric = value
 
     @property
@@ -117,7 +117,7 @@ class Rule:
     def resolution(self, value: str) -> None:
         self._resolution = value
 
-    def run(self, obj: dict, *, other_context: dict | None = None) -> RuleResult | None:
+    def run(self, obj: Any, *, other_context: Any = None) -> RuleResult | None:
         if other_context is None:
             metric_value = self.metric(obj)
         else:
@@ -133,10 +133,10 @@ class Rule:
         explanation = self._explanation(self.metric_name, metric_value)
 
         if self.rule_type == "opportunity":
-            account_name = obj.get("account_name", "")
-            opportunity_name = obj.get("name", "")
+            account_name = getattr(obj, "account_name", "") if hasattr(obj, "account_name") else ""
+            opportunity_name = getattr(obj, "name", "") if hasattr(obj, "name") else ""
         elif self.rule_type == "account":
-            account_name = obj.get("name", "")
+            account_name = getattr(obj, "name", "") if hasattr(obj, "name") else ""
             opportunity_name = ""
         else:
             account_name = ""

@@ -1,3 +1,4 @@
+from models import Opportunity, Rep
 from rules.severity import Severity
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
@@ -29,8 +30,8 @@ RULE_SETTINGS_FIELDS = [
     ),
 ]
 
-def acct_per_rep_metric(rep: dict, opportunities: list[dict]) -> int:
-    owned_by_rep = [opp for opp in opportunities if opp.get("owner") == rep.get("name")]
+def acct_per_rep_metric(rep: Rep, opportunities: list[Opportunity]) -> int:
+    owned_by_rep = [opp for opp in opportunities if opp.owner == rep.name]
     return len(owned_by_rep)
 
 def acct_per_rep_condition(metric_value: int) -> Severity:
@@ -47,7 +48,7 @@ def acct_per_rep_condition(metric_value: int) -> Severity:
         return Severity.LOW
     return Severity.NONE
 
-def acct_per_rep_responsible(rep: dict) -> str:
+def acct_per_rep_responsible(rep: Rep) -> str:
     return "0 - Ops"
 
 def acct_per_rep_explanation(metric_name: str, metric_value: int) -> str:

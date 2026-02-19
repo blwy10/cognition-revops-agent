@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
+from models import Run
 
 
 class PreviousRunsTab(QWidget):
@@ -57,14 +58,14 @@ class PreviousRunsTab(QWidget):
         self.model.removeRows(0, self.model.rowCount())
 
         for run in self.state.runs:
-            run_id_item = QStandardItem(str(run["run_id"]))
-            run_id_item.setData(int(run["run_id"]), Qt.UserRole)
+            run_id_item = QStandardItem(str(run.run_id))
+            run_id_item.setData(int(run.run_id), Qt.UserRole)
 
-            dt = run["datetime"]
+            dt = run.datetime
             dt_text = dt.toString(Qt.ISODate) if hasattr(dt, "toString") else str(dt)
 
             dt_item = QStandardItem(dt_text)
-            issues_item = QStandardItem(str(run["issues_count"]))
+            issues_item = QStandardItem(str(run.issues_count))
 
             self.model.appendRow([run_id_item, dt_item, issues_item])
 
@@ -74,7 +75,7 @@ class PreviousRunsTab(QWidget):
         has_selection = bool(self.table.selectionModel().selectedRows())
         self.load_button.setEnabled(has_selection)
 
-    def _get_selected_run(self) -> Optional[dict]:
+    def _get_selected_run(self) -> Optional[Run]:
         rows = self.table.selectionModel().selectedRows()
         if not rows:
             return None
@@ -82,16 +83,16 @@ class PreviousRunsTab(QWidget):
         row = rows[0].row()
         run_id_item = self.model.item(row, 0)
         run_id = int(run_id_item.data(Qt.UserRole))
-        selected_run = next((r for r in self.state.runs if int(r.get("run_id", -1)) == run_id), None)
-        return selected_run if isinstance(selected_run, dict) else None
+        selected_run = next((r for r in self.state.runs if r.run_id == run_id), None)
+        return selected_run
 
     def _on_load_clicked(self) -> None:
         selected_run = self._get_selected_run()
-        if not isinstance(selected_run, dict):
+        if selected_run is None:
             QMessageBox.warning(self, "Run Not Found", "The selected run could not be found in memory.")
             return
 
-        run_issues = selected_run.get("issues")
+        run_issues = selected_run.issues
         if not isinstance(run_issues, list):
             QMessageBox.warning(
                 self,
@@ -100,9 +101,7 @@ class PreviousRunsTab(QWidget):
             )
             return
 
-        run_id = int(selected_run.get("run_id"))
-
-        self.state.selected_run_id = run_id
+        self.state.selected_run_id = selected_run.run_id
         self.state.issues = list(run_issues)
         self.state.issuesChanged.emit()
         self.state.stateChanged.emit()

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
+from models import Issue
 
 
 class InboxSortProxyModel(QSortFilterProxyModel):
@@ -228,23 +229,23 @@ class InboxTab(QWidget):
 
         for idx, issue in enumerate(self.state.issues):
             items = [
-                QStandardItem(str(issue.get("severity", ""))),
-                QStandardItem(str(issue.get("name", ""))),
-                QStandardItem(str(issue.get("account_name", ""))),
-                QStandardItem(str(issue.get("opportunity_name", ""))),
-                QStandardItem(str(issue.get("category", ""))),
-                QStandardItem(str(issue.get("owner", ""))),
-                QStandardItem(str(issue.get("status", ""))),
-                QStandardItem(issue.get("timestamp").toString("yyyy-MM-dd") if issue.get("timestamp") else ""),
+                QStandardItem(str(issue.severity)),
+                QStandardItem(str(issue.name)),
+                QStandardItem(str(issue.account_name)),
+                QStandardItem(str(issue.opportunity_name)),
+                QStandardItem(str(issue.category)),
+                QStandardItem(str(issue.owner)),
+                QStandardItem(str(issue.status)),
+                QStandardItem(issue.timestamp.toString("yyyy-MM-dd") if issue.timestamp else ""),
             ]
 
             for item in items:
                 item.setData(idx, Qt.UserRole)
 
-            if issue.get("is_unread", False):
+            if issue.is_unread:
                 self._set_row_bold(items, True)
 
-            status = str(issue.get("status", ""))
+            status = str(issue.status)
             status_item = items[6]
             if status == "Snoozed":
                 status_item.setIcon(self._snooze_icon)
@@ -273,30 +274,9 @@ class InboxTab(QWidget):
         if not path.lower().endswith(".csv"):
             path = f"{path}.csv"
 
-        preferred_columns = [
-            "severity",
-            "name",
-            "account_name",
-            "opportunity_name",
-            "category",
-            "owner",
-            "status",
-            "timestamp",
-            "fields",
-            "metric_name",
-            "metric_value",
-            "explanation",
-            "resolution",
-            "snoozed_until",
-            "is_unread",
-        ]
+        import dataclasses as _dc
 
-        extra_keys: set[str] = set()
-        for issue in issues:
-            if isinstance(issue, dict):
-                extra_keys.update(str(k) for k in issue.keys())
-        extra_columns = sorted(k for k in extra_keys if k not in preferred_columns)
-        columns = preferred_columns + extra_columns
+        columns = [f.name for f in _dc.fields(Issue)]
 
         def _cell(value) -> str:
             if value is None:
@@ -317,9 +297,7 @@ class InboxTab(QWidget):
                 writer = csv.DictWriter(f, fieldnames=columns)
                 writer.writeheader()
                 for issue in issues:
-                    if not isinstance(issue, dict):
-                        continue
-                    row = {k: _cell(issue.get(k)) for k in columns}
+                    row = {k: _cell(getattr(issue, k, None)) for k in columns}
                     writer.writerow(row)
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", f"Could not export CSV:\n{e}")
@@ -388,10 +366,10 @@ class InboxTab(QWidget):
             return None
         return self.proxy_model.mapToSource(selected[0]).row()
 
-    def _update_row_visuals(self, *, row: int, issue: dict) -> None:
+    def _update_row_visuals(self, *, row: int, issue: Issue) -> None:
         status_item = self.model.item(row, 6)
         if status_item is not None:
-            status_text = str(issue.get("status", ""))
+            status_text = str(issue.status)
             status_item.setText(status_text)
             if status_text == "Snoozed":
                 status_item.setIcon(self._snooze_icon)
@@ -400,7 +378,7 @@ class InboxTab(QWidget):
             else:
                 status_item.setIcon(QIcon())
 
-        if issue.get("is_unread", False):
+        if issue.is_unread:
             row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
             self._set_row_bold([i for i in row_items if i is not None], True)
         else:
@@ -437,11 +415,9 @@ class InboxTab(QWidget):
         now = None
         changed = False
         for issue in self.state.issues:
-            if not isinstance(issue, dict):
+            if issue.status != "Snoozed":
                 continue
-            if issue.get("status") != "Snoozed":
-                continue
-            snoozed_until = issue.get("snoozed_until")
+            snoozed_until = issue.snoozed_until
             if snoozed_until is None:
                 continue
             if now is None:
@@ -455,9 +431,9 @@ class InboxTab(QWidget):
             if not expired:
                 continue
 
-            issue["status"] = "Open"
-            issue["is_unread"] = True
-            issue.pop("snoozed_until", None)
+            issue.status = "Open"
+            issue.is_unread = True
+            issue.snoozed_until = None
             changed = True
 
         if changed and emit_signals:
@@ -476,10 +452,10 @@ class InboxTab(QWidget):
         issue = self.state.issues[issue_index]
         from PySide6.QtCore import QDateTime
 
-        issue["status"] = "Snoozed"
-        issue["snoozed_until"] = QDateTime.currentDateTime().addDays(1)
+        issue.status = "Snoozed"
+        issue.snoozed_until = QDateTime.currentDateTime().addDays(1)
         self._update_row_visuals(row=row, issue=issue)
-        self.status_edit.setText(str(issue.get("status", "")))
+        self.status_edit.setText(str(issue.status))
         self.state.stateChanged.emit()
 
     def _on_resolve_clicked(self) -> None:
@@ -490,11 +466,11 @@ class InboxTab(QWidget):
         if row is None:
             return
         issue = self.state.issues[issue_index]
-        issue["status"] = "Resolved"
-        issue.pop("snoozed_until", None)
-        issue["is_unread"] = False
+        issue.status = "Resolved"
+        issue.snoozed_until = None
+        issue.is_unread = False
         self._update_row_visuals(row=row, issue=issue)
-        self.status_edit.setText(str(issue.get("status", "")))
+        self.status_edit.setText(str(issue.status))
         self.state.stateChanged.emit()
 
     def _on_reopen_clicked(self) -> None:
@@ -505,11 +481,11 @@ class InboxTab(QWidget):
         if row is None:
             return
         issue = self.state.issues[issue_index]
-        issue["status"] = "Open"
-        issue.pop("snoozed_until", None)
-        issue["is_unread"] = True
+        issue.status = "Open"
+        issue.snoozed_until = None
+        issue.is_unread = True
         self._update_row_visuals(row=row, issue=issue)
-        self.status_edit.setText(str(issue.get("status", "")))
+        self.status_edit.setText(str(issue.status))
         self.state.stateChanged.emit()
 
     def _set_row_bold(self, row_items: list[QStandardItem], bold: bool) -> None:
@@ -538,42 +514,42 @@ class InboxTab(QWidget):
         issue = self.state.issues[issue_index]
         self._set_details(issue)
 
-        if issue.get("status") == "Open":
-            issue["status"] = "Acknowledged"
+        if issue.status == "Open":
+            issue.status = "Acknowledged"
             status_item = self.model.item(source_row, 6)
             if status_item is not None:
                 status_item.setText("Acknowledged")
                 status_item.setIcon(QIcon())
             self.state.stateChanged.emit()
 
-        if issue.get("is_unread", False):
-            issue["is_unread"] = False
+        if issue.is_unread:
+            issue.is_unread = False
             row_items = [self.model.item(source_row, c) for c in range(self.model.columnCount())]
             self._set_row_bold([i for i in row_items if i is not None], False)
             self.state.stateChanged.emit()
 
-    def _set_details(self, issue: dict) -> None:
-        self.severity_edit.setText(str(issue.get("severity", "")))
-        self.name_edit.setText(str(issue.get("name", "")))
-        self.account_name_edit.setText(str(issue.get("account_name", "")))
-        self.opportunity_name_edit.setText(str(issue.get("opportunity_name", "")))
-        self.category_edit.setText(str(issue.get("category", "")))
-        self.owner_edit.setText(str(issue.get("owner", "")))
-        self.status_edit.setText(str(issue.get("status", "")))
-        ts = issue.get("timestamp")
+    def _set_details(self, issue: Issue) -> None:
+        self.severity_edit.setText(str(issue.severity))
+        self.name_edit.setText(str(issue.name))
+        self.account_name_edit.setText(str(issue.account_name))
+        self.opportunity_name_edit.setText(str(issue.opportunity_name))
+        self.category_edit.setText(str(issue.category))
+        self.owner_edit.setText(str(issue.owner))
+        self.status_edit.setText(str(issue.status))
+        ts = issue.timestamp
         self.timestamp_edit.setText(ts.toString("yyyy-MM-dd") if ts else "")
-        fields = issue.get("fields")
+        fields = issue.fields
         if isinstance(fields, (list, tuple)):
             self.fields_edit.setText(", ".join(str(f) for f in fields))
         elif fields is None:
             self.fields_edit.setText("")
         else:
             self.fields_edit.setText(str(fields))
-        self.metric_name_edit.setText(str(issue.get("metric_name", "")))
-        metric_value = issue.get("metric_value")
+        self.metric_name_edit.setText(str(issue.metric_name))
+        metric_value = issue.metric_value
         self.metric_value_edit.setText("" if metric_value is None else str(metric_value))
-        self.explanation_edit.setPlainText(str(issue.get("explanation", "")))
-        self.resolution_edit.setPlainText(str(issue.get("resolution", "")))
+        self.explanation_edit.setPlainText(str(issue.explanation))
+        self.resolution_edit.setPlainText(str(issue.resolution))
 
     def _clear_details(self) -> None:
         self.severity_edit.clear()

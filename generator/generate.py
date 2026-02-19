@@ -3,6 +3,13 @@ from __future__ import annotations
 from collections import defaultdict
 import datetime as _dt
 
+from models import (
+    Account as AccountDC,
+    Opportunity as OpportunityDC,
+    OpportunityHistory as OpportunityHistoryDC,
+    Rep as RepDC,
+    Territory as TerritoryDC,
+)
 from . import settings
 from .io import parse_state_region_mapping, read_json, read_text_list
 from .rng import Rng
@@ -567,4 +574,59 @@ def generate(seed: int | None = None):
                 if _is_ymd(s):
                     h[k] = _clamp_ymd_min(s, created)
 
-    return reps, accounts, opportunities, territories, opportunity_history
+    reps_dc = [
+        RepDC(
+            id=r["id"],
+            name=r["name"],
+            homeState=r["homeState"],
+            region=r["region"],
+            quota=r["quota"],
+            territoryId=r["territoryId"],
+        )
+        for r in reps
+    ]
+    accounts_dc = [
+        AccountDC(
+            id=a["id"],
+            name=a["name"],
+            annualRevenue=a["annualRevenue"],
+            numDevelopers=a["numDevelopers"],
+            state=a["state"],
+            industry=a["industry"],
+            isCustomer=a["isCustomer"],
+            inPipeline=a["inPipeline"],
+            repId=a["repId"],
+            territoryId=a["territoryId"],
+        )
+        for a in accounts
+    ]
+    opportunities_dc = [
+        OpportunityDC(
+            id=o["id"],
+            name=o["name"],
+            amount=o["amount"],
+            stage=o["stage"],
+            created_date=o["created_date"],
+            closeDate=o.get("closeDate"),
+            repId=o["repId"],
+            accountId=o["accountId"],
+        )
+        for o in opportunities
+    ]
+    territories_dc = [
+        TerritoryDC(id=t["id"], name=t["name"])
+        for t in territories
+    ]
+    history_dc = [
+        OpportunityHistoryDC(
+            id=h["id"],
+            opportunity_id=h["opportunity_id"],
+            field_name=h["field_name"],
+            old_value=h.get("old_value"),
+            new_value=h.get("new_value"),
+            change_date=h["change_date"],
+        )
+        for h in opportunity_history
+    ]
+
+    return reps_dc, accounts_dc, opportunities_dc, territories_dc, history_dc

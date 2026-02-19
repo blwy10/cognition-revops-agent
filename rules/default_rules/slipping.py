@@ -1,4 +1,5 @@
 import pandas as pd
+from models import Opportunity, OpportunityHistory
 from rules.rule import Rule
 from rules.severity import Severity
 from rules.rule_settings import RuleSettings
@@ -37,9 +38,9 @@ RULE_SETTINGS_FIELDS = [
     ),
 ]
 
-def slipping_metric(opp: dict, history: list[dict]) -> list:
-    df = pd.DataFrame(history)
-    opp_history = df[df['opportunity_id'] == opp['id']]
+def slipping_metric(opp: Opportunity, history: list[OpportunityHistory]) -> list:
+    df = pd.DataFrame([vars(h) for h in history])
+    opp_history = df[df['opportunity_id'] == opp.id]
     if opp_history.empty:
         return None
     stages = ['0 - New Opportunity',
@@ -84,8 +85,8 @@ def slipping_condition(close_date_history: list) -> Severity:
         return Severity.LOW
     return Severity.NONE
 
-def slipping_responsible(opp: dict) -> str:
-    return opp['owner']
+def slipping_responsible(opp: Opportunity) -> str:
+    return opp.owner
 
 def slipping_format_value(value: list) -> str:
     recent_dates = value[-5:] if len(value) >= 5 else value

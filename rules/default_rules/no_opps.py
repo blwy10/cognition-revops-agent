@@ -1,13 +1,14 @@
+from models import Account, Opportunity
 from rules.rule import Rule, Severity
 
-def no_opps_metric(acct: dict, opportunities: list[dict]) -> int:
-    return len([opp for opp in opportunities if opp.get("account_id") == acct.get("id")])
+def no_opps_metric(acct: Account, opportunities: list[Opportunity]) -> int:
+    return len([opp for opp in opportunities if opp.accountId == acct.id])
 
 def no_opps_condition(metric_value: int) -> Severity:
     return Severity.HIGH if metric_value == 0 else Severity.NONE
 
-def no_opps_responsible(acct: dict) -> str:
-    return acct.get('owner')
+def no_opps_responsible(acct: Account) -> str:
+    return acct.owner
 
 def no_opps_explanation(metric_name: str, metric_value: int) -> str:
     return "No opportunities found for this account" if metric_value == 0 else ""

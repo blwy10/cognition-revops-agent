@@ -1,3 +1,4 @@
+from models import Opportunity
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 from rules.severity import Severity
@@ -23,8 +24,8 @@ RULE_SETTINGS_FIELDS = [
     ),
 ]
 
-def missing_close_date_metric(opp: dict, *args, **kwargs) -> dict:
-    return {"closeDate": opp.get("closeDate"), "stage": opp.get("stage")}
+def missing_close_date_metric(opp: Opportunity, *args, **kwargs) -> dict:
+    return {"closeDate": opp.closeDate, "stage": opp.stage}
 
 
 def _stage_number(stage: object) -> int | None:
@@ -65,8 +66,8 @@ def missing_close_date_condition(metric_value: dict) -> Severity:
     return Severity.HIGH
 
 
-def missing_close_date_responsible(opp: dict) -> str:
-    return opp["owner"]
+def missing_close_date_responsible(opp: Opportunity) -> str:
+    return opp.owner
 
 def missing_close_date_format_metric_value(metric_value: dict) -> str:
     close_date = metric_value.get("closeDate") if isinstance(metric_value, dict) else None

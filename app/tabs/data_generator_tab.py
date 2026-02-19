@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from app.state import AppState
 from generator import generate
+from models import to_dict
 
 
 class DataGeneratorTab(QWidget):
@@ -124,11 +125,11 @@ class DataGeneratorTab(QWidget):
         payload = {
             "schema": "revops-agent-skeleton",
             "generated_at": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
-            "reps": reps,
-            "accounts": accounts,
-            "opportunities": opportunities,
-            "territories": territories,
-            "opportunity_history": opportunity_history,
+            "reps": to_dict(reps),
+            "accounts": to_dict(accounts),
+            "opportunities": to_dict(opportunities),
+            "territories": to_dict(territories),
+            "opportunity_history": to_dict(opportunity_history),
         }
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)

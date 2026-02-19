@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from models import Opportunity
 from rules.rule import Rule
 from rules.rule_settings import RuleSettings
 from rules.severity import Severity
@@ -53,8 +54,8 @@ RULE_SETTINGS_FIELDS = [
 ]
 
 
-def amount_outlier_metric(opp: dict, *args, **kwargs) -> dict:
-    return {"amount": opp.get("amount"), "stage": opp.get("stage")}
+def amount_outlier_metric(opp: Opportunity, *args, **kwargs) -> dict:
+    return {"amount": opp.amount, "stage": opp.stage}
 
 
 def _is_closed_stage(stage: object) -> bool:
@@ -130,8 +131,8 @@ def amount_outlier_condition(metric_value: dict) -> Severity:
     return Severity.NONE
 
 
-def amount_outlier_responsible(opp: dict) -> str:
-    return opp.get("owner", "")
+def amount_outlier_responsible(opp: Opportunity) -> str:
+    return opp.owner
 
 
 def amount_outlier_format_metric_value(metric_value: dict) -> str:

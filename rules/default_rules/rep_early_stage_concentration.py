@@ -1,3 +1,4 @@
+from models import Opportunity, Rep
 from rules.severity import Severity
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
@@ -37,10 +38,10 @@ RULE_SETTINGS_FIELDS = [
 ]
 
 
-def rep_early_stage_concentration_metric(rep: dict, opportunities: list[dict]) -> dict:
-    owned_by_rep = [opp for opp in opportunities if opp.get("owner") == rep.get("name")]
+def rep_early_stage_concentration_metric(rep: Rep, opportunities: list[Opportunity]) -> dict:
+    owned_by_rep = [opp for opp in opportunities if opp.owner == rep.name]
     total_opps = len(owned_by_rep)
-    stage_0_and_1_opps = sum(1 for opp in owned_by_rep if opp.get("stage") in ("0 - Discovery", "1 - Qualification"))
+    stage_0_and_1_opps = sum(1 for opp in owned_by_rep if opp.stage in ("0 - Discovery", "1 - Qualification"))
     return {"total_opps": total_opps, "stage_0_and_1_opps": stage_0_and_1_opps}
 
 def rep_early_stage_concentration_condition(metric_value: dict) -> Severity:
@@ -82,8 +83,8 @@ def rep_early_stage_concentration_condition(metric_value: dict) -> Severity:
         return Severity.LOW
     return Severity.NONE
 
-def rep_early_stage_concentration_responsible(rep: dict) -> str:
-    return rep.get("name")
+def rep_early_stage_concentration_responsible(rep: Rep) -> str:
+    return rep.name
 
 def rep_early_stage_concentration_formatted_metric_value(metric_value: dict) -> str:
     total_opps = metric_value.get("total_opps", 0)

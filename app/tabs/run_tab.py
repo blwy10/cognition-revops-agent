@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
+from models import Issue, Run
 from rules.rule_settings import RuleSettings
 from rules.default_rules import (
     MissingCloseDateRule,
@@ -172,9 +173,9 @@ class RunTab(QWidget):
 
         next_id = 1
         if self.state.runs:
-            next_id = max(r["run_id"] for r in self.state.runs) + 1
+            next_id = max(r.run_id for r in self.state.runs) + 1
 
-        issues: list[dict[str, Any]] = []
+        issues: list[Issue] = []
 
         # Run opportunity-level rules
         for opp in self.state.opportunities:
@@ -190,24 +191,22 @@ class RunTab(QWidget):
                 if result is None:
                     continue
 
-                issues.append(
-                    {
-                        "severity": str(result.severity),
-                        "name": str(result.name),
-                        "account_name": str(result.account_name),
-                        "opportunity_name": str(result.opportunity_name),
-                        "category": str(result.category),
-                        "owner": str(result.responsible),
-                        "fields": list(result.fields),
-                        "metric_name": str(result.metric_name),
-                        "metric_value": result.formatted_metric_value,
-                        "explanation": str(result.explanation),
-                        "resolution": str(result.resolution),
-                        "status": "Open",
-                        "timestamp": QDateTime.currentDateTime(),
-                        "is_unread": True,
-                    }
-                )
+                issues.append(Issue(
+                    severity=str(result.severity),
+                    name=str(result.name),
+                    account_name=str(result.account_name),
+                    opportunity_name=str(result.opportunity_name),
+                    category=str(result.category),
+                    owner=str(result.responsible),
+                    fields=list(result.fields),
+                    metric_name=str(result.metric_name),
+                    metric_value=result.formatted_metric_value,
+                    explanation=str(result.explanation),
+                    resolution=str(result.resolution),
+                    status="Open",
+                    timestamp=QDateTime.currentDateTime(),
+                    is_unread=True,
+                ))
 
         # Run portfolio-level rules
         for rule in opportunity_portfollio_rules:
@@ -222,24 +221,22 @@ class RunTab(QWidget):
             if result is None:
                 continue
 
-            issues.append(
-                {
-                    "severity": str(result.severity),
-                    "name": str(result.name),
-                    "account_name": str(result.account_name),
-                    "opportunity_name": str(result.opportunity_name),
-                    "category": str(result.category),
-                    "owner": str(result.responsible),
-                    "fields": list(result.fields),
-                    "metric_name": str(result.metric_name),
-                    "metric_value": result.formatted_metric_value,
-                    "explanation": str(result.explanation),
-                    "resolution": str(result.resolution),
-                    "status": "Open",
-                    "timestamp": QDateTime.currentDateTime(),
-                    "is_unread": True,
-                }
-            )
+            issues.append(Issue(
+                severity=str(result.severity),
+                name=str(result.name),
+                account_name=str(result.account_name),
+                opportunity_name=str(result.opportunity_name),
+                category=str(result.category),
+                owner=str(result.responsible),
+                fields=list(result.fields),
+                metric_name=str(result.metric_name),
+                metric_value=result.formatted_metric_value,
+                explanation=str(result.explanation),
+                resolution=str(result.resolution),
+                status="Open",
+                timestamp=QDateTime.currentDateTime(),
+                is_unread=True,
+            ))
         
         # Run rep-level rules
         for rep in self.state.reps:
@@ -255,24 +252,22 @@ class RunTab(QWidget):
                 if result is None:
                     continue
 
-                issues.append(
-                    {
-                        "severity": str(result.severity),
-                        "name": str(result.name),
-                        "account_name": str(result.account_name),
-                        "opportunity_name": str(result.opportunity_name),
-                        "category": str(result.category),
-                        "owner": str(result.responsible),
-                        "fields": list(result.fields),
-                        "metric_name": str(result.metric_name),
-                        "metric_value": result.formatted_metric_value,
-                        "explanation": str(result.explanation),
-                        "resolution": str(result.resolution),
-                        "status": "Open",
-                        "timestamp": QDateTime.currentDateTime(),
-                        "is_unread": True,
-                    }
-                )
+                issues.append(Issue(
+                    severity=str(result.severity),
+                    name=str(result.name),
+                    account_name=str(result.account_name),
+                    opportunity_name=str(result.opportunity_name),
+                    category=str(result.category),
+                    owner=str(result.responsible),
+                    fields=list(result.fields),
+                    metric_name=str(result.metric_name),
+                    metric_value=result.formatted_metric_value,
+                    explanation=str(result.explanation),
+                    resolution=str(result.resolution),
+                    status="Open",
+                    timestamp=QDateTime.currentDateTime(),
+                    is_unread=True,
+                ))
         
         # Run account-level rules
         for account in self.state.accounts:
@@ -288,24 +283,22 @@ class RunTab(QWidget):
                 if result is None:
                     continue
 
-                issues.append(
-                    {
-                        "severity": str(result.severity),
-                        "name": str(result.name),
-                        "account_name": str(result.account_name),
-                        "opportunity_name": str(result.opportunity_name),
-                        "category": str(result.category),
-                        "owner": str(result.responsible),
-                        "fields": list(result.fields),
-                        "metric_name": str(result.metric_name),
-                        "metric_value": result.formatted_metric_value,
-                        "explanation": str(result.explanation),
-                        "resolution": str(result.resolution),
-                        "status": "Open",
-                        "timestamp": QDateTime.currentDateTime(),
-                        "is_unread": True,
-                    }
-                )
+                issues.append(Issue(
+                    severity=str(result.severity),
+                    name=str(result.name),
+                    account_name=str(result.account_name),
+                    opportunity_name=str(result.opportunity_name),
+                    category=str(result.category),
+                    owner=str(result.responsible),
+                    fields=list(result.fields),
+                    metric_name=str(result.metric_name),
+                    metric_value=result.formatted_metric_value,
+                    explanation=str(result.explanation),
+                    resolution=str(result.resolution),
+                    status="Open",
+                    timestamp=QDateTime.currentDateTime(),
+                    is_unread=True,
+                ))
         
         # Run global account rules
         for rule in acct_portfolio_rules:
@@ -320,24 +313,22 @@ class RunTab(QWidget):
             if result is None:
                 continue
 
-            issues.append(
-                {
-                    "severity": str(result.severity),
-                    "name": str(result.name),
-                    "account_name": str(result.account_name),
-                    "opportunity_name": str(result.opportunity_name),
-                    "category": str(result.category),
-                    "owner": str(result.responsible),
-                    "fields": list(result.fields),
-                    "metric_name": str(result.metric_name),
-                    "metric_value": result.formatted_metric_value,
-                    "explanation": str(result.explanation),
-                    "resolution": str(result.resolution),
-                    "status": "Open",
-                    "timestamp": QDateTime.currentDateTime(),
-                    "is_unread": True,
-                }
-            )
+            issues.append(Issue(
+                severity=str(result.severity),
+                name=str(result.name),
+                account_name=str(result.account_name),
+                opportunity_name=str(result.opportunity_name),
+                category=str(result.category),
+                owner=str(result.responsible),
+                fields=list(result.fields),
+                metric_name=str(result.metric_name),
+                metric_value=result.formatted_metric_value,
+                explanation=str(result.explanation),
+                resolution=str(result.resolution),
+                status="Open",
+                timestamp=QDateTime.currentDateTime(),
+                is_unread=True,
+            ))
 
         self.state.issues = issues
         self.state.selected_run_id = next_id
@@ -345,14 +336,12 @@ class RunTab(QWidget):
 
         self.state.stateChanged.emit()
 
-        self.state.runs.append(
-            {
-                "run_id": next_id,
-                "datetime": QDateTime.currentDateTime(),
-                "issues_count": len(issues),
-                "issues": list(issues),
-            }
-        )
+        self.state.runs.append(Run(
+            run_id=next_id,
+            datetime=QDateTime.currentDateTime(),
+            issues_count=len(issues),
+            issues=list(issues),
+        ))
         self.state.runsChanged.emit()
 
         self.state.stateChanged.emit()

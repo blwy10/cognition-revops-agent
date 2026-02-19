@@ -1,3 +1,4 @@
+from models import Opportunity
 from rules.severity import Severity
 from rules.rule import Rule
 from rules.rule_settings import RuleSettings
@@ -30,9 +31,9 @@ RULE_SETTINGS_FIELDS = [
 ]
 
 
-def portfolio_early_stage_concentration_metric(opportunities: list[dict], *args, **kwargs) -> dict:
+def portfolio_early_stage_concentration_metric(opportunities: list[Opportunity], *args, **kwargs) -> dict:
     total_opps = len(opportunities)
-    stage_0_and_1_opps = sum(1 for opp in opportunities if opp.get("stage") in ("0 - Discovery", "1 - Qualification"))
+    stage_0_and_1_opps = sum(1 for opp in opportunities if opp.stage in ("0 - Discovery", "1 - Qualification"))
     return {"total_opps": total_opps, "stage_0_and_1_opps": stage_0_and_1_opps}
 
 def portfolio_early_stage_concentration_condition(metric_value: dict) -> Severity:
@@ -65,7 +66,7 @@ def portfolio_early_stage_concentration_condition(metric_value: dict) -> Severit
         return Severity.LOW
     return Severity.NONE
 
-def portfolio_early_stage_concentration_responsible(opportunities: list[dict]) -> str:
+def portfolio_early_stage_concentration_responsible(opportunities: list[Opportunity]) -> str:
     return '0 - Ops'
 
 def portfolio_early_stage_concentration_formatted_metric_value(metric_value: dict) -> str:

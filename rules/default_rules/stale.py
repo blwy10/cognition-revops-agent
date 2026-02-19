@@ -4,6 +4,7 @@ from datetime import datetime
  
 import pandas as pd
  
+from models import Opportunity, OpportunityHistory
 from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 from rules.severity import Severity
@@ -36,16 +37,16 @@ RULE_SETTINGS_FIELDS = [
     ),
 ]
 
-def staleness_metric(opp: dict, history: list[dict]) -> dict:
-    df = pd.DataFrame(history)
-    opp_history = df[(df['opportunity_id'] == opp['id']) & (df['field_name'] == 'stage')]
+def staleness_metric(opp: Opportunity, history: list[OpportunityHistory]) -> dict:
+    df = pd.DataFrame([vars(h) for h in history])
+    opp_history = df[(df['opportunity_id'] == opp.id) & (df['field_name'] == 'stage')]
     if opp_history.empty:
-        last_known_stage = opp['stage']
-        last_change_date = opp['created_date']
+        last_known_stage = opp.stage
+        last_change_date = opp.created_date
     else:
         most_recent = opp_history.loc[opp_history['change_date'].idxmax()]
         last_known_stage, last_change_date = most_recent['new_value'], most_recent['change_date']
-    if last_known_stage != opp['stage']:
+    if last_known_stage != opp.stage:
         return {'days_since_last_change': 0, 'last_change_date': last_change_date}
     days_since_last_change = (datetime.today().date() - last_change_date.date()).days
     return {'days_since_last_change': days_since_last_change, 'last_change_date': last_change_date}
@@ -59,8 +60,8 @@ def staleness_condition(days: dict) -> Severity:
         return Severity.LOW
     return Severity.NONE
 
-def staleness_responsible(opp: dict) -> str:
-    return opp['owner']
+def staleness_responsible(opp: Opportunity) -> str:
+    return opp.owner
 
 def staleness_format_value(value: dict) -> str:
     return f"Last change date: {value['last_change_date'].strftime('%Y-%m-%d')}\nDays since last change: {value['days_since_last_change']} days"

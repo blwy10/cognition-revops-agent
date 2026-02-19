@@ -8,6 +8,17 @@ from typing import Any, Optional
 
 from PySide6.QtCore import QDateTime, QObject, Qt, Signal, QSettings
 
+from models import (
+    Account,
+    Issue,
+    Opportunity,
+    OpportunityHistory,
+    Rep,
+    Run,
+    Territory,
+    to_dict,
+)
+
 
 class AppState(QObject):
     loadedDataChanged = Signal(str)
@@ -31,14 +42,14 @@ class AppState(QObject):
         self._output_data_path: Optional[str] = output_path or None
 
         self.dataset: Optional[dict[str, Any]] = None
-        self.reps: list[dict] = []
-        self.accounts: list[dict] = []
-        self.opportunities: list[dict] = []
-        self.territories: list[dict] = []
-        self.opportunity_history: list[dict] = []
+        self.reps: list[Rep] = []
+        self.accounts: list[Account] = []
+        self.opportunities: list[Opportunity] = []
+        self.territories: list[Territory] = []
+        self.opportunity_history: list[OpportunityHistory] = []
 
-        self.runs: list[dict] = []
-        self.issues: list[dict] = []
+        self.runs: list[Run] = []
+        self.issues: list[Issue] = []
         self.selected_run_id: Optional[int] = None
 
         default_run_path = self.get_default_run_json_path()
@@ -116,7 +127,7 @@ class AppState(QObject):
         target = str(path or self.run_json_path)
         payload = {
             "schema": "revops-agent-run",
-            "runs": self._json_friendly(self.runs),
+            "runs": self._json_friendly(to_dict(self.runs)),
             "selectedRun": self.selected_run_id,
         }
         with open(target, "w", encoding="utf-8") as f:
@@ -130,54 +141,75 @@ class AppState(QObject):
         with open(target, "r", encoding="utf-8") as f:
             payload = json.load(f)
 
-        runs = payload.get("runs")
+        runs_raw = payload.get("runs")
         selected_run = payload.get("selectedRun")
-        self.runs = list(runs) if isinstance(runs, list) else []
+        self.runs = []
         self.issues = []
+
+        if isinstance(runs_raw, list):
+            for rd in runs_raw:
+                if not isinstance(rd, dict):
+                    continue
+                if "datetime" in rd:
+                    rd["datetime"] = self._parse_qdatetime(rd["datetime"])
+                nested_issues_raw = rd.get("issues")
+                issues_list: list[Issue] = []
+                if isinstance(nested_issues_raw, list):
+                    for isd in nested_issues_raw:
+                        if not isinstance(isd, dict):
+                            continue
+                        if "timestamp" in isd:
+                            isd["timestamp"] = self._parse_qdatetime(isd["timestamp"])
+                        if "snoozed_until" in isd:
+                            isd["snoozed_until"] = self._parse_qdatetime(isd["snoozed_until"])
+                        issues_list.append(Issue(
+                            severity=isd.get("severity", ""),
+                            name=isd.get("name", ""),
+                            account_name=isd.get("account_name", ""),
+                            opportunity_name=isd.get("opportunity_name", ""),
+                            category=isd.get("category", ""),
+                            owner=isd.get("owner", ""),
+                            fields=isd.get("fields", []),
+                            metric_name=isd.get("metric_name", ""),
+                            metric_value=isd.get("metric_value"),
+                            formatted_metric_value=str(isd.get("metric_value", "")),
+                            explanation=isd.get("explanation", ""),
+                            resolution=isd.get("resolution", ""),
+                            status=isd.get("status", "Open"),
+                            timestamp=isd.get("timestamp"),
+                            is_unread=isd.get("is_unread", True),
+                            snoozed_until=isd.get("snoozed_until"),
+                        ))
+                self.runs.append(Run(
+                    run_id=int(rd.get("run_id", 0)),
+                    datetime=rd.get("datetime"),
+                    issues_count=int(rd.get("issues_count", 0)),
+                    issues=issues_list,
+                ))
 
         try:
             self.selected_run_id = int(selected_run) if selected_run is not None else None
         except Exception:
             self.selected_run_id = None
 
-        for run in self.runs:
-            if isinstance(run, dict) and "datetime" in run:
-                run["datetime"] = self._parse_qdatetime(run.get("datetime"))
-
-            nested_issues = run.get("issues") if isinstance(run, dict) else None
-            if isinstance(nested_issues, list):
-                for issue in nested_issues:
-                    if isinstance(issue, dict) and "timestamp" in issue:
-                        issue["timestamp"] = self._parse_qdatetime(issue.get("timestamp"))
-                    if isinstance(issue, dict) and "snoozed_until" in issue:
-                        issue["snoozed_until"] = self._parse_qdatetime(issue.get("snoozed_until"))
-
         # Derive current issues list from selected run.
-        selected_run_dict: Optional[dict] = None
+        selected_run_obj: Optional[Run] = None
         if self.selected_run_id is not None:
-            selected_run_dict = next(
-                (r for r in self.runs if isinstance(r, dict) and int(r.get("run_id", -1)) == int(self.selected_run_id)),
+            selected_run_obj = next(
+                (r for r in self.runs if r.run_id == self.selected_run_id),
                 None,
             )
 
-        if selected_run_dict is None and self.runs:
+        if selected_run_obj is None and self.runs:
             # Fallback to most recent run by run_id.
             try:
-                selected_run_dict = max(
-                    (r for r in self.runs if isinstance(r, dict) and r.get("run_id") is not None),
-                    key=lambda r: int(r.get("run_id")),
-                )
+                selected_run_obj = max(self.runs, key=lambda r: r.run_id)
             except Exception:
-                selected_run_dict = None
+                selected_run_obj = None
 
-        if isinstance(selected_run_dict, dict):
-            try:
-                self.selected_run_id = int(selected_run_dict.get("run_id"))
-            except Exception:
-                self.selected_run_id = None
-
-            run_issues = selected_run_dict.get("issues")
-            self.issues = list(run_issues) if isinstance(run_issues, list) else []
+        if selected_run_obj is not None:
+            self.selected_run_id = selected_run_obj.run_id
+            self.issues = list(selected_run_obj.issues)
         else:
             self.issues = []
 
@@ -188,14 +220,6 @@ class AppState(QObject):
             payload = json.load(f)
 
         self.dataset = payload
-        self.reps = list(payload.get("reps") or [])
-        self.accounts = list(payload.get("accounts") or [])
-        self.opportunities = list(payload.get("opportunities") or [])
-        self.territories = list(payload.get("territories") or [])
-        self.opportunity_history = list(payload.get("opportunity_history") or [])
-
-        account_name_by_id = {int(a.get("id")): str(a.get("name", "")) for a in self.accounts if a.get("id") is not None}
-        rep_name_by_id = {int(r.get("id")): str(r.get("name", "")) for r in self.reps if r.get("id") is not None}
 
         generated_at = payload.get("generated_at")
         try:
@@ -215,30 +239,78 @@ class AppState(QObject):
                 return datetime.fromisoformat(value.replace("Z", "+00:00"))
             except Exception:
                 return value
-        
-        # Add rep names to accounts
-        for acct in self.accounts:
-            rep_id = acct.get('repId')
-            if rep_id is not None and "owner" not in acct:
-                acct["owner"] = rep_name_by_id.get(int(rep_id), "")
 
-        # Normalize opportunities for rules (owner/created_date/history)
-        for o in self.opportunities:
-            rep_id = o.get("repId")
-            if rep_id is not None and "owner" not in o:
-                o["owner"] = rep_name_by_id.get(int(rep_id), "")
+        # Build reps
+        self.reps = [
+            Rep(
+                id=int(r["id"]),
+                name=str(r.get("name", "")),
+                homeState=str(r.get("homeState", "")),
+                region=str(r.get("region", "")),
+                quota=int(r.get("quota", 0)),
+                territoryId=int(r.get("territoryId", 0)),
+            )
+            for r in (payload.get("reps") or [])
+        ]
 
-            account_id = o.get("accountId")
-            if account_id is not None and "account_name" not in o:
-                o["account_name"] = account_name_by_id.get(int(account_id), "")
+        # Build territories
+        self.territories = [
+            Territory(id=int(t["id"]), name=str(t.get("name", "")))
+            for t in (payload.get("territories") or [])
+        ]
 
-            if "created_date" in o:
-                o["created_date"] = _parse_date_or_datetime(o.get("created_date"))
-            else:
-                o["created_date"] = default_created
+        rep_name_by_id = {r.id: r.name for r in self.reps}
+        account_name_by_id: dict[int, str] = {}
 
-        for h in self.opportunity_history:
-            if "change_date" in h:
-                h["change_date"] = _parse_date_or_datetime(h.get("change_date"))
+        # Build accounts
+        self.accounts = []
+        for ad in (payload.get("accounts") or []):
+            acct = Account(
+                id=int(ad["id"]),
+                name=str(ad.get("name", "")),
+                annualRevenue=int(ad.get("annualRevenue", 0)),
+                numDevelopers=int(ad.get("numDevelopers", 0)),
+                state=str(ad.get("state", "")),
+                industry=str(ad.get("industry", "")),
+                isCustomer=bool(ad.get("isCustomer", False)),
+                inPipeline=bool(ad.get("inPipeline", False)),
+                repId=int(ad.get("repId", 0)),
+                territoryId=int(ad.get("territoryId", 0)),
+                owner=rep_name_by_id.get(int(ad.get("repId", 0)), ""),
+            )
+            self.accounts.append(acct)
+            account_name_by_id[acct.id] = acct.name
+
+        # Build opportunities
+        self.opportunities = []
+        for od in (payload.get("opportunities") or []):
+            created_raw = od.get("created_date")
+            created = _parse_date_or_datetime(created_raw) if created_raw is not None else default_created
+            opp = Opportunity(
+                id=int(od["id"]),
+                name=str(od.get("name", "")),
+                amount=int(od.get("amount", 0)),
+                stage=str(od.get("stage", "")),
+                created_date=created,
+                closeDate=od.get("closeDate"),
+                repId=int(od.get("repId", 0)),
+                accountId=int(od.get("accountId", 0)),
+                owner=rep_name_by_id.get(int(od.get("repId", 0)), ""),
+                account_name=account_name_by_id.get(int(od.get("accountId", 0)), ""),
+            )
+            self.opportunities.append(opp)
+
+        # Build opportunity history
+        self.opportunity_history = []
+        for hd in (payload.get("opportunity_history") or []):
+            h = OpportunityHistory(
+                id=int(hd["id"]),
+                opportunity_id=int(hd["opportunity_id"]),
+                field_name=str(hd.get("field_name", "")),
+                old_value=hd.get("old_value"),
+                new_value=hd.get("new_value"),
+                change_date=_parse_date_or_datetime(hd.get("change_date")),
+            )
+            self.opportunity_history.append(h)
 
         self.datasetChanged.emit()
