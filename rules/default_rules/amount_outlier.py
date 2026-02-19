@@ -121,18 +121,18 @@ def amount_outlier_explanation(metric_name: str, metric_value: dict) -> str:
         low_high = low_med
 
     if amount > float(high_high):
-        return f"Amount ({amount:,.0f}) is above the high outlier threshold ({high_high:,.0f})"
+        return f"Amount ({amount:,.0f}) is unusually large, above the high threshold ({high_high:,.0f})"
     if amount > float(high_med):
-        return f"Amount ({amount:,.0f}) is above the medium outlier threshold ({high_med:,.0f})"
+        return f"Amount ({amount:,.0f}) is unusually large, above the medium threshold ({high_med:,.0f})"
     if amount > float(high_low):
-        return f"Amount ({amount:,.0f}) is above the low outlier threshold ({high_low:,.0f})"
+        return f"Amount ({amount:,.0f}) is unusually large, above the low threshold ({high_low:,.0f})"
 
     if amount < float(low_high):
-        return f"Amount ({amount:,.0f}) is below the high low-end threshold ({low_high:,.0f})"
+        return f"Amount ({amount:,.0f}) is unusually small, below the high threshold ({low_high:,.0f})"
     if amount < float(low_med):
-        return f"Amount ({amount:,.0f}) is below the medium low-end threshold ({low_med:,.0f})"
+        return f"Amount ({amount:,.0f}) is unusually small, below the medium threshold ({low_med:,.0f})"
     if amount < float(low_low):
-        return f"Amount ({amount:,.0f}) is below the low low-end threshold ({low_low:,.0f})"
+        return f"Amount ({amount:,.0f}) is unusually small, below the low threshold ({low_low:,.0f})"
 
     return ""
 
