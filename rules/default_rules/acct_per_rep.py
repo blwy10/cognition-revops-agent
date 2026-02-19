@@ -63,6 +63,9 @@ def acct_per_rep_explanation(metric_name: str, metric_value: int) -> str:
         return f"Accounts owned: {metric_value} which is above the threshold of {low} for low severity"
     return f"Accounts owned: {metric_value}"
 
+def acct_per_rep_format_value(x) -> str:
+    return f"{x}"
+
 AcctPerRepAboveThreshold = Rule(
     rule_type="rep",
     settings_id=RULE_ID,
@@ -73,7 +76,7 @@ AcctPerRepAboveThreshold = Rule(
     responsible=acct_per_rep_responsible,
     fields=['repId'],
     metric_name="Accts per rep",
-    format_metric_value=lambda x: f"{x}",
+    format_metric_value=acct_per_rep_format_value,
     explanation=acct_per_rep_explanation,
     resolution="Ops rebalance accounts among reps and see if there are routing issues in CRM",
 )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import concurrent.futures
+from concurrent.futures import InterpreterPoolExecutor
 from typing import Any
 from typing import Optional
 
@@ -61,6 +63,30 @@ def _rule_enabled(rule) -> bool:
     if s in ("0", "false", "no", "off"):
         return False
     return True
+
+
+def _run_rule_task(rule, obj, other_context):
+    """Module-level function so it can be pickled by InterpreterPoolExecutor."""
+    return rule.run(obj, other_context=other_context)
+
+
+def _result_to_issue(result) -> Issue:
+    return Issue(
+        severity=str(result.severity),
+        name=str(result.name),
+        account_name=str(result.account_name),
+        opportunity_name=str(result.opportunity_name),
+        category=str(result.category),
+        owner=str(result.responsible),
+        fields=list(result.fields),
+        metric_name=str(result.metric_name),
+        metric_value=result.formatted_metric_value,
+        explanation=str(result.explanation),
+        resolution=str(result.resolution),
+        status="Open",
+        timestamp=QDateTime.currentDateTime(),
+        is_unread=True,
+    )
 
 class RunTab(QWidget):
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
@@ -175,160 +201,52 @@ class RunTab(QWidget):
         if self.state.runs:
             next_id = max(r.run_id for r in self.state.runs) + 1
 
-        issues: list[Issue] = []
+        # Build a flat list of (rule, obj, other_context) tasks, pre-filtering enabled rules
+        tasks: list[tuple] = []
 
-        # Run opportunity-level rules
+        # Opportunity-level rules
+        enabled_opp_rules = [r for r in opportunity_rules if _rule_enabled(r)]
         for opp in self.state.opportunities:
-            for rule in opportunity_rules:
-                if not _rule_enabled(rule):
-                    continue
-                try:
-                    result = rule.run(opp, other_context=self.state.opportunity_history)
-                except Exception as e:
-                    print(e)
-                    raise
+            for rule in enabled_opp_rules:
+                tasks.append((rule, opp, self.state.opportunity_history))
 
-                if result is None:
-                    continue
-
-                issues.append(Issue(
-                    severity=str(result.severity),
-                    name=str(result.name),
-                    account_name=str(result.account_name),
-                    opportunity_name=str(result.opportunity_name),
-                    category=str(result.category),
-                    owner=str(result.responsible),
-                    fields=list(result.fields),
-                    metric_name=str(result.metric_name),
-                    metric_value=result.formatted_metric_value,
-                    explanation=str(result.explanation),
-                    resolution=str(result.resolution),
-                    status="Open",
-                    timestamp=QDateTime.currentDateTime(),
-                    is_unread=True,
-                ))
-
-        # Run portfolio-level rules
+        # Portfolio-level opportunity rules
         for rule in opportunity_portfolio_rules:
-            if not _rule_enabled(rule):
-                continue
-            try:
-                result = rule.run(self.state.opportunities)
-            except Exception as e:
-                print(e)
-                raise
+            if _rule_enabled(rule):
+                tasks.append((rule, self.state.opportunities, None))
 
-            if result is None:
-                continue
-
-            issues.append(Issue(
-                severity=str(result.severity),
-                name=str(result.name),
-                account_name=str(result.account_name),
-                opportunity_name=str(result.opportunity_name),
-                category=str(result.category),
-                owner=str(result.responsible),
-                fields=list(result.fields),
-                metric_name=str(result.metric_name),
-                metric_value=result.formatted_metric_value,
-                explanation=str(result.explanation),
-                resolution=str(result.resolution),
-                status="Open",
-                timestamp=QDateTime.currentDateTime(),
-                is_unread=True,
-            ))
-        
-        # Run rep-level rules
+        # Rep-level rules
+        enabled_rep_rules = [r for r in rep_rules if _rule_enabled(r)]
         for rep in self.state.reps:
-            for rule in rep_rules:
-                if not _rule_enabled(rule):
-                    continue
-                try:
-                    result = rule.run(rep, other_context=self.state.opportunities)
-                except Exception as e:
-                    print(e)
-                    raise
+            for rule in enabled_rep_rules:
+                tasks.append((rule, rep, self.state.opportunities))
 
-                if result is None:
-                    continue
-
-                issues.append(Issue(
-                    severity=str(result.severity),
-                    name=str(result.name),
-                    account_name=str(result.account_name),
-                    opportunity_name=str(result.opportunity_name),
-                    category=str(result.category),
-                    owner=str(result.responsible),
-                    fields=list(result.fields),
-                    metric_name=str(result.metric_name),
-                    metric_value=result.formatted_metric_value,
-                    explanation=str(result.explanation),
-                    resolution=str(result.resolution),
-                    status="Open",
-                    timestamp=QDateTime.currentDateTime(),
-                    is_unread=True,
-                ))
-        
-        # Run account-level rules
+        # Account-level rules
+        enabled_acct_rules = [r for r in acct_rules if _rule_enabled(r)]
         for account in self.state.accounts:
-            for rule in acct_rules:
-                if not _rule_enabled(rule):
-                    continue
+            for rule in enabled_acct_rules:
+                tasks.append((rule, account, self.state.opportunities))
+
+        # Global account rules
+        for rule in acct_portfolio_rules:
+            if _rule_enabled(rule):
+                tasks.append((rule, self.state.accounts, self.state.opportunities))
+
+        # Execute all rule tasks in parallel
+        issues: list[Issue] = []
+        with InterpreterPoolExecutor() as executor:
+            futures = {
+                executor.submit(_run_rule_task, rule, obj, ctx): (rule, obj, ctx)
+                for rule, obj, ctx in tasks
+            }
+            for future in concurrent.futures.as_completed(futures):
                 try:
-                    result = rule.run(account, other_context=self.state.opportunities)
+                    result = future.result()
                 except Exception as e:
                     print(e)
                     raise
-
-                if result is None:
-                    continue
-
-                issues.append(Issue(
-                    severity=str(result.severity),
-                    name=str(result.name),
-                    account_name=str(result.account_name),
-                    opportunity_name=str(result.opportunity_name),
-                    category=str(result.category),
-                    owner=str(result.responsible),
-                    fields=list(result.fields),
-                    metric_name=str(result.metric_name),
-                    metric_value=result.formatted_metric_value,
-                    explanation=str(result.explanation),
-                    resolution=str(result.resolution),
-                    status="Open",
-                    timestamp=QDateTime.currentDateTime(),
-                    is_unread=True,
-                ))
-        
-        # Run global account rules
-        for rule in acct_portfolio_rules:
-            if not _rule_enabled(rule):
-                continue
-            try:
-                result = rule.run(self.state.accounts, other_context=self.state.opportunities)
-            except Exception as e:
-                print(e)
-                raise
-
-            if result is None:
-                continue
-
-            issues.append(Issue(
-                severity=str(result.severity),
-                name=str(result.name),
-                account_name=str(result.account_name),
-                opportunity_name=str(result.opportunity_name),
-                category=str(result.category),
-                owner=str(result.responsible),
-                fields=list(result.fields),
-                metric_name=str(result.metric_name),
-                metric_value=result.formatted_metric_value,
-                explanation=str(result.explanation),
-                resolution=str(result.resolution),
-                status="Open",
-                timestamp=QDateTime.currentDateTime(),
-                is_unread=True,
-            ))
+                if result is not None:
+                    issues.append(_result_to_issue(result))
 
         self.state.issues = issues
         self.state.selected_run_id = next_id

@@ -77,6 +77,9 @@ def undercover_tam_responsible(acct: Account) -> str:
 def undercover_tam_explanation(metric_name: str, metric_value: dict) -> str:
     return f"TAM: {metric_value['tam']}\nPipeline: {metric_value['pipeline']}\nCoverage: {metric_value['coverage']}%" if metric_value['coverage'] < 100 else "No opportunities found for this account"
 
+def undercover_tam_format_value(x) -> str:
+    return f"{x['coverage']}%"
+
 UndercoverTam = Rule(
     rule_type="account",
     settings_id=RULE_ID,
@@ -87,7 +90,7 @@ UndercoverTam = Rule(
     responsible=undercover_tam_responsible,
     fields=['accountId', 'amount'],
     metric_name="Under-covered TAM",
-    format_metric_value=lambda x: f"{x['coverage']}%",
+    format_metric_value=undercover_tam_format_value,
     explanation=undercover_tam_explanation,
     resolution="Ops should ask rep why there is not enough pipeline for this account",
 )

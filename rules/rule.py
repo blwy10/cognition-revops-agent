@@ -7,6 +7,26 @@ from .rule_result import RuleResult
 from .severity import Severity
 
 
+def _default_responsible(obj):
+    return ""
+
+
+def _default_metric(obj):
+    return 0.0
+
+
+def _default_format_metric_value(value):
+    return str(value)
+
+
+def _default_condition(value):
+    return Severity.NONE
+
+
+def _default_explanation(metric_name, value):
+    return ""
+
+
 class Rule:
     def __init__(
         self,
@@ -28,13 +48,13 @@ class Rule:
         self._name = name
         self._category = category
         self._rule_type = rule_type
-        self._responsible = responsible or (lambda obj: "")
+        self._responsible = responsible or _default_responsible
         self._metric_name = metric_name
-        self._metric = metric or (lambda obj: 0.0)
-        self._format_metric_value = format_metric_value or (lambda value: str(value))
-        self._condition = condition or (lambda value: Severity.NONE)
+        self._metric = metric or _default_metric
+        self._format_metric_value = format_metric_value or _default_format_metric_value
+        self._condition = condition or _default_condition
         self._fields = list(fields)
-        self._explanation = explanation or (lambda metric_name, value: "")
+        self._explanation = explanation or _default_explanation
         self._resolution = resolution
 
     @property

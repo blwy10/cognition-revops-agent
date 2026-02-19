@@ -13,6 +13,9 @@ def no_opps_responsible(acct: Account) -> str:
 def no_opps_explanation(metric_name: str, metric_value: int) -> str:
     return "No opportunities found for this account" if metric_value == 0 else ""
 
+def no_opps_format_value(x) -> str:
+    return f"{x}"
+
 NoOpps = Rule(
     rule_type="account",
     name="No opps",
@@ -22,7 +25,7 @@ NoOpps = Rule(
     responsible=no_opps_responsible,
     fields=['accountId'],
     metric_name="No opps",
-    format_metric_value=lambda x: f"{x}",
+    format_metric_value=no_opps_format_value,
     explanation=no_opps_explanation,
     resolution="Ops should ask rep why there are no opportunities for this account",
 )
