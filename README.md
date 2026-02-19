@@ -61,6 +61,8 @@
   - Why important: When there are multiple users, it will prevent data loss and improve performance
 - Migrate to a web-based stack for scalability - currently it is a local desktop GUI app
   - Why important: Enables multiple users, and easier to onboard new people
+- Clean up the types - currently there are too many untyped dicts
+  - Why important: Easier to debug if there are many rules
 
 # Debugging approach and use of Windsurf
 - The main way the app will break is if there is an issue with executing rules. In the terminal, it will print what exact file is there a break. All the rule files are in the `rules/default_rules` directory.
