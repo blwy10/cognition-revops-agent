@@ -4,5 +4,6 @@ from .portfolio_early_stage_concentration import PortfolioEarlyStageConcentratio
 from .rep_early_stage_concentration import RepEarlyStageConcentrationRule
 from .slipping import SlippingRule
 from .acct_per_rep import AcctPerRepAboveThreshold
+from .pipeline_imbalance import PipelinePerRepImbalance
 
-__all__ = ["MissingCloseDateRule", "StalenessRule", "PortfolioEarlyStageConcentrationRule", "RepEarlyStageConcentrationRule", "SlippingRule", "AcctPerRepAboveThreshold"]
+__all__ = ["MissingCloseDateRule", "StalenessRule", "PortfolioEarlyStageConcentrationRule", "RepEarlyStageConcentrationRule", "SlippingRule", "AcctPerRepAboveThreshold", "PipelinePerRepImbalance"]

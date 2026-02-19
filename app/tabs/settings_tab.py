@@ -33,6 +33,7 @@ class SettingsTab(QWidget):
         missingCloseDateGroup = self._build_missing_close_date_group()
         portfolioEarlyStageGroup = self._build_portfolio_early_stage_group()
         repEarlyStageGroup = self._build_rep_early_stage_group()
+        repPipelineImbalanceGroup = self._build_pipeline_imbalance_group()
         acctPerRepGroup = self._build_acct_per_rep_group()
         slippingGroup = self._build_slipping_group()
 
@@ -44,6 +45,7 @@ class SettingsTab(QWidget):
         contentLayout.addWidget(missingCloseDateGroup)
         contentLayout.addWidget(portfolioEarlyStageGroup)
         contentLayout.addWidget(repEarlyStageGroup)
+        contentLayout.addWidget(repPipelineImbalanceGroup)
         contentLayout.addWidget(acctPerRepGroup)
         contentLayout.addWidget(slippingGroup)
         contentLayout.addStretch(1)
@@ -290,17 +292,58 @@ class SettingsTab(QWidget):
         repEarlyStageLayout.addStretch(1)
         return repEarlyStageGroup
 
+    def _build_pipeline_imbalance_group(self) -> QGroupBox:
+        lowThreshold = QSpinBox()
+        lowThreshold.setRange(0, 10000000)
+        lowThreshold.setValue(500000)
+
+        mediumThreshold = QSpinBox()
+        mediumThreshold.setRange(0, 10000000)
+        mediumThreshold.setValue(600000)
+
+        highThreshold = QSpinBox()
+        highThreshold.setRange(0, 10000000)
+        highThreshold.setValue(800000)
+
+        self._bind_rule_spinbox(lowThreshold, "rep_pipeline_imbalance.low_severity")
+        self._bind_rule_spinbox(mediumThreshold, "rep_pipeline_imbalance.medium_severity")
+        self._bind_rule_spinbox(highThreshold, "rep_pipeline_imbalance.high_severity")
+
+        pipelineImbalanceForm = QFormLayout()
+        pipelineImbalanceForm.setHorizontalSpacing(10)
+        pipelineImbalanceForm.setVerticalSpacing(8)
+        pipelineImbalanceForm.addRow(
+            "Rep pipeline imbalance threshold (low severity)",
+            lowThreshold,
+        )
+        pipelineImbalanceForm.addRow(
+            "Rep pipeline imbalance threshold (medium severity)",
+            mediumThreshold,
+        )
+        pipelineImbalanceForm.addRow(
+            "Rep pipeline imbalance threshold (high severity)",
+            highThreshold,
+        )
+
+        pipelineImbalanceGroup = QGroupBox("Rep pipeline imbalance")
+        pipelineImbalanceLayout = QVBoxLayout(pipelineImbalanceGroup)
+        pipelineImbalanceLayout.setContentsMargins(16, 16, 16, 16)
+        pipelineImbalanceLayout.setSpacing(12)
+        pipelineImbalanceLayout.addLayout(pipelineImbalanceForm)
+        pipelineImbalanceLayout.addStretch(1)
+        return pipelineImbalanceGroup
+
     def _build_acct_per_rep_group(self) -> QGroupBox:
         acctPerRepLow = QSpinBox()
-        acctPerRepLow.setRange(0, 10000)
+        acctPerRepLow.setRange(0, 100)
         acctPerRepLow.setValue(6)
 
         acctPerRepMedium = QSpinBox()
-        acctPerRepMedium.setRange(0, 10000)
+        acctPerRepMedium.setRange(0, 100)
         acctPerRepMedium.setValue(10)
 
         acctPerRepHigh = QSpinBox()
-        acctPerRepHigh.setRange(0, 10000)
+        acctPerRepHigh.setRange(0, 100)
         acctPerRepHigh.setValue(15)
 
         self._bind_rule_spinbox(acctPerRepLow, "acct_per_rep.low_severity")
