@@ -194,6 +194,7 @@ class AppState(QObject):
         self.territories = list(payload.get("territories") or [])
         self.opportunity_history = list(payload.get("opportunity_history") or [])
 
+        account_name_by_id = {int(a.get("id")): str(a.get("name", "")) for a in self.accounts if a.get("id") is not None}
         rep_name_by_id = {int(r.get("id")): str(r.get("name", "")) for r in self.reps if r.get("id") is not None}
 
         generated_at = payload.get("generated_at")
@@ -220,6 +221,10 @@ class AppState(QObject):
             rep_id = o.get("repId")
             if rep_id is not None and "owner" not in o:
                 o["owner"] = rep_name_by_id.get(int(rep_id), "")
+
+            account_id = o.get("accountId")
+            if account_id is not None and "account_name" not in o:
+                o["account_name"] = account_name_by_id.get(int(account_id), "")
 
             if "created_date" in o:
                 o["created_date"] = _parse_date_or_datetime(o.get("created_date"))
