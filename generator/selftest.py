@@ -6,7 +6,7 @@ from .validate import validate
 
 
 def main() -> None:
-    reps, accounts, opportunities, territories = generate(seed=123)
+    reps, accounts, opportunities, territories, opportunity_history = generate(seed=123)
 
     validate(
         reps,
@@ -25,7 +25,10 @@ def main() -> None:
     )
 
     total = sum(int(o["amount"]) for o in opportunities)
-    print(f"OK reps={len(reps)} accounts={len(accounts)} opps={len(opportunities)} territories={len(territories)} total={total}")
+    print(
+        f"OK reps={len(reps)} accounts={len(accounts)} opps={len(opportunities)} territories={len(territories)} "
+        f"history={len(opportunity_history)} total={total}"
+    )
 
 
 if __name__ == "__main__":

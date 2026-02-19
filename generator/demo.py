@@ -6,7 +6,7 @@ from .generate import generate
 
 
 def main() -> None:
-    reps, accounts, opportunities, territories = generate()
+    reps, accounts, opportunities, territories, opportunity_history = generate()
 
     total = sum(int(o["amount"]) for o in opportunities)
     revenues = [int(a["annualRevenue"]) for a in accounts]
@@ -19,6 +19,7 @@ def main() -> None:
     print(f"accounts: {len(accounts)}")
     print(f"opportunities: {len(opportunities)}")
     print(f"territories: {len(territories)}")
+    print(f"opportunity_history: {len(opportunity_history)}")
     print(f"total_pipeline: {total}")
     print(f"annualRevenue min/max: {min(revenues)} / {max(revenues)}")
     print(f"accounts in pipeline: {sum(1 for a in accounts if a['inPipeline'])}")

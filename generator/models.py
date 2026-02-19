@@ -36,6 +36,15 @@ class Opportunity(TypedDict):
     accountId: int
 
 
+class OpportunityHistory(TypedDict):
+    id: int
+    opportunity_id: int
+    field_name: str
+    old_value: Optional[str]
+    new_value: Optional[str]
+    change_date: str
+
+
 class Territory(TypedDict):
     id: int
     name: str

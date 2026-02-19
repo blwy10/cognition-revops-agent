@@ -126,7 +126,7 @@ class DataGeneratorTab(QWidget):
             if result != QMessageBox.Yes:
                 return
 
-        reps, accounts, opportunities, territories = generate()
+        reps, accounts, opportunities, territories, opportunity_history = generate()
         payload = {
             "schema": "revops-agent-skeleton",
             "generated_at": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
@@ -134,6 +134,7 @@ class DataGeneratorTab(QWidget):
             "accounts": accounts,
             "opportunities": opportunities,
             "territories": territories,
+            "opportunity_history": opportunity_history,
         }
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)

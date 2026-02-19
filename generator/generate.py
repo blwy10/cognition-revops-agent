@@ -7,6 +7,72 @@ from .io import parse_state_region_mapping, read_json, read_text_list
 from .rng import Rng
 
 
+def _generate_opportunity_history(
+    rng: Rng,
+    opportunities: list[dict],
+    *,
+    stages: list[str],
+) -> list[dict]:
+    history: list[dict] = []
+    next_id = 1
+
+    w = settings.OPPORTUNITY_HISTORY_CHANGE_WINDOW
+
+    for o in opportunities:
+        opp_id = int(o["id"])
+
+        # Stage changes
+        stage_now = str(o.get("stage") or "")
+        if stage_now:
+            stage_changes = rng.randint(0, 2)
+            prev = stage_now
+            for _ in range(stage_changes):
+                choices = [s for s in stages if s > prev]
+                if not choices:
+                    break
+                nxt = str(rng.choice(choices))
+                history.append(
+                    {
+                        "id": next_id,
+                        "opportunity_id": opp_id,
+                        "field_name": "stage",
+                        "old_value": prev,
+                        "new_value": nxt,
+                        "change_date": rng.date_between(w.start, w.end),
+                    }
+                )
+                next_id += 1
+                prev = nxt
+
+        # Close date changes
+        close_now = o.get("closeDate")
+        close_changes = rng.randint(0, 2)
+        prev_close = None if close_now is None else str(close_now)
+        for _ in range(close_changes):
+            if prev_close is None:
+                nxt_close = rng.date_between(settings.RECENT_CLOSE_WINDOW.start, settings.FUTURE_CLOSE_WINDOW.end)
+            else:
+                nxt_close = rng.date_between(settings.RECENT_CLOSE_WINDOW.start, settings.FUTURE_CLOSE_WINDOW.end)
+                if nxt_close == prev_close:
+                    # Force an actual change.
+                    nxt_close = rng.date_between(settings.RECENT_CLOSE_WINDOW.start, settings.FUTURE_CLOSE_WINDOW.end)
+
+            history.append(
+                {
+                    "id": next_id,
+                    "opportunity_id": opp_id,
+                    "field_name": "closeDate",
+                    "old_value": prev_close,
+                    "new_value": nxt_close,
+                    "change_date": rng.date_between(w.start, w.end),
+                }
+            )
+            next_id += 1
+            prev_close = nxt_close
+
+    return history
+
+
 def _ensure_unique_names(items: list[dict], *, kind: str) -> None:
     used: set[str] = set()
     counts: dict[str, int] = defaultdict(int)
@@ -204,10 +270,10 @@ def _try_global_scale(
 
 
 def generate(seed: int | None = None):
-    """Generate reps, accounts, opportunities, territories.
+    """Generate reps, accounts, opportunities, territories, opportunity_history.
 
     Returns:
-        (reps, accounts, opportunities, territories)
+        (reps, accounts, opportunities, territories, opportunity_history)
         where each is a list[dict].
     """
 
@@ -381,7 +447,7 @@ def generate(seed: int | None = None):
         a["inPipeline"] = bool(opps_by_account_id.get(int(a["id"])))
 
     # -------------
-    # Close dates: exactly 10% recent window; rest future window
+    # Close dates: exactly 10% recent window; 5% missing; rest future window
     # -------------
     recent_n = int(round(settings.NUM_OPPORTUNITIES * settings.RECENT_CLOSE_PCT))
     if recent_n != int(settings.NUM_OPPORTUNITIES * settings.RECENT_CLOSE_PCT):
@@ -450,4 +516,6 @@ def generate(seed: int | None = None):
             quota = per_rep_expected * float(settings.QUOTA_MULTIPLIER_ON_TERRITORY_PIPELINE)
             r["quota"] = _clamp_int(round(quota), settings.QUOTA_MIN, settings.QUOTA_MAX)
 
-    return reps, accounts, opportunities, territories
+    opportunity_history = _generate_opportunity_history(rng, opportunities, stages=stages)
+
+    return reps, accounts, opportunities, territories, opportunity_history
