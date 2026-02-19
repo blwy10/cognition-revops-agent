@@ -26,6 +26,8 @@ class InboxTab(QWidget):
         self.state = state
 
         outer = QVBoxLayout(self)
+        outer.setContentsMargins(16, 16, 16, 16)
+        outer.setSpacing(12)
         self.splitter = QSplitter(Qt.Horizontal, self)
         outer.addWidget(self.splitter)
 
@@ -33,16 +35,24 @@ class InboxTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setWordWrap(False)
 
         self.model = QStandardItemModel(self)
         self.model.setHorizontalHeaderLabels(self.COLUMNS)
         self.table.setModel(self.model)
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
 
         self.splitter.addWidget(self.table)
 
         self.details_widget = QWidget(self)
         self.details_form = QFormLayout(self.details_widget)
+        self.details_form.setContentsMargins(12, 12, 12, 12)
+        self.details_form.setHorizontalSpacing(10)
+        self.details_form.setVerticalSpacing(8)
 
         self.severity_edit = QLineEdit()
         self.severity_edit.setReadOnly(True)

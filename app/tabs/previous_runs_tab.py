@@ -22,11 +22,17 @@ class PreviousRunsTab(QWidget):
         self.state = state
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         self.table = QTableView(self)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setWordWrap(False)
 
         self.model = QStandardItemModel(self)
         self.model.setHorizontalHeaderLabels(["Run ID", "DateTime", "# Issues"])

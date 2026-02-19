@@ -22,6 +22,8 @@ class RunTab(QWidget):
         self.state = state
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         self.run_button = QPushButton("Run Analysis")
         layout.addWidget(self.run_button)

@@ -22,7 +22,11 @@ class SettingsTab(QWidget):
         self.state = state
 
         outer = QVBoxLayout(self)
+        outer.setContentsMargins(16, 16, 16, 16)
+        outer.setSpacing(12)
         form = QFormLayout()
+        form.setHorizontalSpacing(10)
+        form.setVerticalSpacing(8)
 
         workspace = QLineEdit("Default Workspace")
         model = QComboBox()
