@@ -6,7 +6,7 @@ from rules.rule import Rule
 def rep_early_stage_concentration_metric(rep: dict, opportunities: list[dict]) -> dict:
     owned_by_rep = [opp for opp in opportunities if opp.get("owner") == rep.get("name")]
     total_opps = len(owned_by_rep)
-    stage_0_and_1_opps = sum(1 for opp in owned_by_rep if opp.get("stage") in ("0 - Discovery", "1 - Qualification"))
+    stage_0_and_1_opps = sum(1 for opp in owned_by_rep if opp.get("stage") in ("0 - New Opportunity", "1 - Qualification"))
     return {"total_opps": total_opps, "stage_0_and_1_opps": stage_0_and_1_opps}
 
 def rep_early_stage_concentration_condition(metric_value: dict) -> Severity:

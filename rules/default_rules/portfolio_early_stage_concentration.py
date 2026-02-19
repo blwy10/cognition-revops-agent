@@ -5,7 +5,7 @@ from rules.rule_settings import RuleSettings
 
 def portfolio_early_stage_concentration_metric(opportunities: list[dict], *args, **kwargs) -> dict:
     total_opps = len(opportunities)
-    stage_0_and_1_opps = sum(1 for opp in opportunities if opp.get("stage") in ("0 - Discovery", "1 - Qualification"))
+    stage_0_and_1_opps = sum(1 for opp in opportunities if opp.get("stage") in ("0 - New Opportunity", "1 - Qualification"))
     return {"total_opps": total_opps, "stage_0_and_1_opps": stage_0_and_1_opps}
 
 def portfolio_early_stage_concentration_condition(metric_value: dict) -> Severity:

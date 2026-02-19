@@ -3,8 +3,8 @@ from rules.rule_settings import RuleSettings
 from rules.rule import Rule
 
 def acct_per_rep_metric(rep: dict, opportunities: list[dict]) -> int:
-    owned_by_rep = [opp for opp in opportunities if opp.get("owner") == rep.get("name")]
-    return len(owned_by_rep)
+    unique_accounts = set(opp.get("accountId") for opp in opportunities if opp.get("owner") == rep.get("name"))
+    return len(unique_accounts)
 
 def acct_per_rep_condition(metric_value: int) -> Severity:
     count = metric_value
