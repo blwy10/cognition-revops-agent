@@ -39,6 +39,7 @@
   - Settings for rules are collected using widgets defined in `settings_tab.py`
   - New rules can be created by following the format of the rules in the `rules/default_rules` directory, and adding it to the right list in `run_tab.py`. If you want settings input for a rule, you can collect it by adding a new settings group in `settings_tab.py` - see the `_build_*` functions and where they're called in the main class constructor `__init__`
 - `state.py` contains the main application state class as a singleton object
+  - Effectively, `AppState` is the main coordinator of data updates across the UI - it emits signals that the UI in Previous Runs and Inbox picks up to make the needed changes to their data and display
 
 # Tradeoffs
 - I used a local stack for faster development (traditional GUI app built in Python). This is easier to run and deploy locally, but not scalable for shared use, and is probably not aligned with the broader market of available engineering knowledge
