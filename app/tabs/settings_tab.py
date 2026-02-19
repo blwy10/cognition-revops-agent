@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 
-from app.rule_settings import RuleSettings
+from rules.rule_settings import RuleSettings
 from app.state import AppState
 
 

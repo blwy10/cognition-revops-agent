@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-
 from PySide6.QtCore import QObject, Signal
 
 
