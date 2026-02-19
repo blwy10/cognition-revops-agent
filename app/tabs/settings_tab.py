@@ -122,10 +122,50 @@ class SettingsTab(QWidget):
         staleLayout.addLayout(staleForm)
         staleLayout.addStretch(1)
 
+        missingCloseDateGroup = QGroupBox("Missing Close Date Settings")
+
+        missingCloseDateLayout = QVBoxLayout(missingCloseDateGroup)
+        missingCloseDateLayout.setContentsMargins(16, 16, 16, 16)
+        missingCloseDateLayout.setSpacing(12)
+        missingCloseDateForm = QFormLayout()
+        missingCloseDateForm.setHorizontalSpacing(10)
+        missingCloseDateForm.setVerticalSpacing(8)
+
+        missingCloseDateLowMaxStage = QSpinBox()
+        missingCloseDateLowMaxStage.setRange(0, 6)
+        missingCloseDateLowMaxStage.setValue(1)
+
+        missingCloseDateMediumMaxStage = QSpinBox()
+        missingCloseDateMediumMaxStage.setRange(0, 6)
+        missingCloseDateMediumMaxStage.setValue(2)
+
+        RuleSettings.set("missing_close_date.low_max_stage", missingCloseDateLowMaxStage.value())
+        RuleSettings.set(
+            "missing_close_date.medium_max_stage", missingCloseDateMediumMaxStage.value()
+        )
+
+        missingCloseDateLowMaxStage.valueChanged.connect(
+            lambda v: RuleSettings.set("missing_close_date.low_max_stage", int(v))
+        )
+        missingCloseDateMediumMaxStage.valueChanged.connect(
+            lambda v: RuleSettings.set("missing_close_date.medium_max_stage", int(v))
+        )
+
+        missingCloseDateForm.addRow(
+            "Highest stage for LOW severity", missingCloseDateLowMaxStage
+        )
+        missingCloseDateForm.addRow(
+            "Highest stage for MEDIUM severity", missingCloseDateMediumMaxStage
+        )
+
+        missingCloseDateLayout.addLayout(missingCloseDateForm)
+        missingCloseDateLayout.addStretch(1)
+
         layout = QVBoxLayout(self)
         layout.addWidget(persistenceGroup)
         layout.addWidget(tamGroup)
         layout.addWidget(staleGroup)
+        layout.addWidget(missingCloseDateGroup)
         layout.addStretch(1)
 
         self.run_json_browse.clicked.connect(self._on_browse_run_json)

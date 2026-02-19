@@ -91,7 +91,7 @@ class InboxTab(QWidget):
         self.fields_edit.setReadOnly(True)
         self.metric_name_edit = QLineEdit()
         self.metric_name_edit.setReadOnly(True)
-        self.metric_value_edit = QLineEdit()
+        self.metric_value_edit = QTextEdit()
         self.metric_value_edit.setReadOnly(True)
         self.explanation_edit = QTextEdit()
         self.explanation_edit.setReadOnly(True)

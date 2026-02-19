@@ -16,6 +16,7 @@ class Rule:
         responsible: Callable[[dict], str] | None = None,
         metric_name: str = "",
         metric: Callable[[dict], float] | None = None,
+        format_metric_value: Callable[[Any], str] | None = None,
         condition: Callable[[Any], Severity] | None = None,
         fields: Iterable[str] = (),
         explanation: Callable[[str, float], str] | None = None,
@@ -26,6 +27,7 @@ class Rule:
         self._responsible = responsible or (lambda obj: "")
         self._metric_name = metric_name
         self._metric = metric or (lambda obj: 0.0)
+        self._format_metric_value = format_metric_value or (lambda value: str(value))
         self._condition = condition or (lambda value: Severity.NONE)
         self._fields = list(fields)
         self._explanation = explanation or (lambda metric_name, value: "")
@@ -104,6 +106,10 @@ class Rule:
         if severity == Severity.NONE:
             return None
 
+        if self._format_metric_value is not None:
+            formatted_metric_value = self._format_metric_value(metric_value)
+        else:
+            formatted_metric_value = metric_value
         explanation = self._explanation(self.metric_name, metric_value)
 
         return RuleResult(
@@ -114,6 +120,7 @@ class Rule:
             fields=tuple(self.fields),
             metric_name=self.metric_name,
             metric_value=metric_value,
+            formatted_metric_value=formatted_metric_value,
             timestamp=datetime.now(),
             resolution=self.resolution,
             explanation=explanation,

@@ -5,8 +5,8 @@ from datetime import datetime
 import pandas as pd
  
 from rules.rule_settings import RuleSettings
-from .rule import Rule
-from .severity import Severity
+from rules.rule import Rule
+from rules.severity import Severity
 
 # Stale opportunities
 def staleness_metric(opp: dict, history: list[dict]) -> int:

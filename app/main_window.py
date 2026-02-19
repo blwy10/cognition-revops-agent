@@ -12,6 +12,8 @@ from app.tabs.previous_runs_tab import PreviousRunsTab
 from app.tabs.run_tab import RunTab
 from app.tabs.settings_tab import SettingsTab
 
+import os
+
 
 class MainWindow(QMainWindow):
     def __init__(self, parent: Optional[QMainWindow] = None) -> None:

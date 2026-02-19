@@ -9,6 +9,7 @@ class RuleResult:
         fields: tuple[str, ...],
         metric_name: str,
         metric_value: float,
+        formatted_metric_value: str,
         timestamp: datetime,
         explanation: str,
         resolution: str,
@@ -20,6 +21,7 @@ class RuleResult:
         self._fields = fields
         self._metric_name = metric_name
         self._metric_value = metric_value
+        self._formatted_metric_value = formatted_metric_value
         self._timestamp = timestamp
         self._explanation = explanation
         self._resolution = resolution
@@ -48,6 +50,10 @@ class RuleResult:
     @property
     def metric_value(self) -> float:
         return self._metric_value
+
+    @property
+    def formatted_metric_value(self) -> str:
+        return self._formatted_metric_value
 
     @property
     def timestamp(self) -> datetime:

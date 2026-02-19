@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
-from rules.default_rules import StalenessRule
+from rules.default_rules import MissingCloseDateRule, StalenessRule
 
-opportunity_rules = [StalenessRule]
+opportunity_rules = [StalenessRule, MissingCloseDateRule]
 
 
 class RunTab(QWidget):
@@ -71,9 +71,8 @@ class RunTab(QWidget):
                 try:
                     result = rule.run(opp, other_context=self.state.opportunity_history)
                 except Exception as e:
-                    # Don't fail the entire run due to a single rule/opportunity.
-                    result = None
-                    QMessageBox.warning(self, "Rule Error", f"Rule '{getattr(rule, 'name', '')}' failed: {e}")
+                    print(e)
+                    raise
 
                 if result is None:
                     continue
@@ -86,7 +85,7 @@ class RunTab(QWidget):
                         "owner": str(result.responsible),
                         "fields": list(result.fields),
                         "metric_name": str(result.metric_name),
-                        "metric_value": result.metric_value,
+                        "metric_value": result.formatted_metric_value,
                         "explanation": str(result.explanation),
                         "resolution": str(result.resolution),
                         "status": "Open",
