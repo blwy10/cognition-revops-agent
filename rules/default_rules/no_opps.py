@@ -1,7 +1,7 @@
 from rules.rule import Rule, Severity
 
 def no_opps_metric(acct: dict, opportunities: list[dict]) -> int:
-    return len([opp for opp in opportunities if opp.get("account_id") == acct.get("id")])
+    return len([opp for opp in opportunities if opp.get("accountId") == acct.get("id")])
 
 def no_opps_condition(metric_value: int) -> Severity:
     return Severity.HIGH if metric_value == 0 else Severity.NONE

@@ -4,10 +4,10 @@ from rules.rule import Rule
 
 
 def undercover_tam_metric(acct: dict, opportunities: list[dict]) -> dict:
-    total_opps = len([opp for opp in opportunities if opp.get("account_id") == acct.get("id")])
+    total_opps = len([opp for opp in opportunities if opp.get("accountId") == acct.get("id")])
     if total_opps == 0:
         return {'pipeline': 0, 'tam': 0, 'coverage': 100}
-    total_opp_amt = sum(opp['amount'] for opp in opportunities if opp.get("account_id") == acct.get("id"))
+    total_opp_amt = sum(opp['amount'] for opp in opportunities if opp.get("accountId") == acct.get("id"))
     revenue_per_developer = RuleSettings.get("tam.revenue_per_developer", 1000)
     coverage_pct = RuleSettings.get("tam.coverage_percentage", 50)
     tam = acct['numDevelopers'] * revenue_per_developer * coverage_pct / 100
