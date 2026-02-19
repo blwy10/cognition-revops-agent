@@ -35,7 +35,7 @@ class DataGeneratorTab(QWidget):
         layout.addLayout(controls_row)
 
         output_row = QHBoxLayout()
-        self.select_output_button = QPushButton("Select Output File…")
+        self.select_output_button = QPushButton("Select JSON Data File…")
         self.output_path_edit = QLineEdit()
         self.output_path_edit.setReadOnly(True)
         output_row.addWidget(self.select_output_button)
@@ -70,7 +70,7 @@ class DataGeneratorTab(QWidget):
     def _on_select_output(self) -> None:
         path, _filter = QFileDialog.getSaveFileName(
             self,
-            "Select Output JSON File",
+            "Select JSON Data File",
             self.state.output_data_path or "",
             "JSON Files (*.json)",
         )
@@ -82,7 +82,7 @@ class DataGeneratorTab(QWidget):
     def _on_load_existing(self) -> None:
         path, _filter = QFileDialog.getOpenFileName(
             self,
-            "Load Existing JSON Dataset",
+            "Load Existing JSON Data File",
             self.state.loaded_data_path or "",
             "JSON Files (*.json)",
         )
@@ -93,7 +93,7 @@ class DataGeneratorTab(QWidget):
 
     def _on_generate(self) -> None:
         if not self.state.output_data_path:
-            QMessageBox.warning(self, "Missing Output File", "Select an output file first.")
+            QMessageBox.warning(self, "Missing JSON Data File", "Select a JSON data file first.")
             return
 
         output_path = self.state.output_data_path
