@@ -1,9 +1,15 @@
 """Tests for generator.validate module."""
+import dataclasses
 import pytest
 
 from generator.validate import validate, _is_ymd
 from generator.generate import generate
 from generator import settings
+
+
+def _to_dicts(items):
+    """Convert a list of dataclass instances to a list of dicts."""
+    return [dataclasses.asdict(item) for item in items]
 
 
 class TestIsYmd:
@@ -27,7 +33,7 @@ class TestValidateHappyPath:
     def test_validate_passes(self, data):
         reps, accounts, opps, territories, _ = data
         validate(
-            reps, accounts, opps, territories,
+            _to_dicts(reps), _to_dicts(accounts), _to_dicts(opps), _to_dicts(territories),
             expected_reps=settings.NUM_REPS,
             expected_accounts=settings.NUM_ACCOUNTS,
             expected_opportunities=settings.NUM_OPPORTUNITIES,
@@ -65,26 +71,26 @@ class TestValidateErrorCases:
         kwargs = self._default_kwargs()
         kwargs["expected_reps"] = 999
         with pytest.raises(ValueError, match="Expected 999 reps"):
-            validate(reps, accounts, opps, territories, **kwargs)
+            validate(_to_dicts(reps), _to_dicts(accounts), _to_dicts(opps), _to_dicts(territories), **kwargs)
 
     def test_wrong_account_count(self, good_data):
         reps, accounts, opps, territories, _ = good_data
         kwargs = self._default_kwargs()
         kwargs["expected_accounts"] = 999
         with pytest.raises(ValueError, match="Expected 999 accounts"):
-            validate(reps, accounts, opps, territories, **kwargs)
+            validate(_to_dicts(reps), _to_dicts(accounts), _to_dicts(opps), _to_dicts(territories), **kwargs)
 
     def test_wrong_opp_count(self, good_data):
         reps, accounts, opps, territories, _ = good_data
         kwargs = self._default_kwargs()
         kwargs["expected_opportunities"] = 999
         with pytest.raises(ValueError, match="Expected 999 opportunities"):
-            validate(reps, accounts, opps, territories, **kwargs)
+            validate(_to_dicts(reps), _to_dicts(accounts), _to_dicts(opps), _to_dicts(territories), **kwargs)
 
     def test_duplicate_rep_ids(self, good_data):
         reps, accounts, opps, territories, _ = good_data
-        bad_reps = list(reps)
+        bad_reps = _to_dicts(reps)
         bad_reps[1] = dict(bad_reps[0])  # duplicate id
         kwargs = self._default_kwargs()
         with pytest.raises(ValueError):
-            validate(bad_reps, accounts, opps, territories, **kwargs)
+            validate(bad_reps, _to_dicts(accounts), _to_dicts(opps), _to_dicts(territories), **kwargs)

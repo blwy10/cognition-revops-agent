@@ -120,7 +120,7 @@ class TestLoadJsonData:
         f = tmp_path / "data.json"
         f.write_text(json.dumps(data))
         state.load_json_data(str(f))
-        assert state.opportunities[0]["owner"] == "Alice"
+        assert state.opportunities[0].owner == "Alice"
 
     def test_adds_account_name_to_opportunities(self, state, tmp_path):
         data = {
@@ -133,7 +133,7 @@ class TestLoadJsonData:
         f = tmp_path / "data.json"
         f.write_text(json.dumps(data))
         state.load_json_data(str(f))
-        assert state.opportunities[0]["account_name"] == "Acme Corp"
+        assert state.opportunities[0].account_name == "Acme Corp"
 
     def test_adds_owner_to_accounts(self, state, tmp_path):
         data = {
@@ -146,7 +146,7 @@ class TestLoadJsonData:
         f = tmp_path / "data.json"
         f.write_text(json.dumps(data))
         state.load_json_data(str(f))
-        assert state.accounts[0]["owner"] == "Alice"
+        assert state.accounts[0].owner == "Alice"
 
     def test_signal_emitted(self, state, tmp_path, qtbot):
         data = {"reps": [], "accounts": [], "opportunities": [], "territories": [], "opportunity_history": []}

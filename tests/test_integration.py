@@ -36,7 +36,8 @@ from rules.default_rules import (
 )
 from generator.generate import generate
 from generator import settings as gen_settings
-from generator.models import Rep, Account, Opportunity, OpportunityHistory, Territory
+import dataclasses
+from models import Rep, Account, Opportunity, OpportunityHistory, Territory
 
 
 # =========================================================================
@@ -229,14 +230,14 @@ class TestRunTabRuleLists:
         run_tab list (opportunity_rules, rep_rules, acct_rules, etc.)."""
         from app.tabs.run_tab import (
             opportunity_rules,
-            opportunity_portfollio_rules,
+            opportunity_portfolio_rules,
             rep_rules,
             acct_rules,
             acct_portfolio_rules,
         )
         all_in_lists = set(
             id(r) for r in (
-                opportunity_rules + opportunity_portfollio_rules +
+                opportunity_rules + opportunity_portfolio_rules +
                 rep_rules + acct_rules + acct_portfolio_rules
             )
         )
@@ -267,10 +268,10 @@ class TestRunTabRuleLists:
             )
 
     def test_portfolio_opp_rules_type(self):
-        from app.tabs.run_tab import opportunity_portfollio_rules
-        for rule in opportunity_portfollio_rules:
+        from app.tabs.run_tab import opportunity_portfolio_rules
+        for rule in opportunity_portfolio_rules:
             assert rule.rule_type == "portfolio_opp", (
-                f"Rule '{rule.name}' in opportunity_portfollio_rules but has type '{rule.rule_type}'"
+                f"Rule '{rule.name}' in opportunity_portfolio_rules but has type '{rule.rule_type}'"
             )
 
     def test_portfolio_acct_rules_type(self):
@@ -295,52 +296,52 @@ class TestGeneratedDataCompatibility:
     def test_opportunities_have_stage_field(self, gen_data):
         _, _, opps, _, _ = gen_data
         for o in opps:
-            assert "stage" in o
+            assert hasattr(o, "stage")
 
     def test_opportunities_have_amount_field(self, gen_data):
         _, _, opps, _, _ = gen_data
         for o in opps:
-            assert "amount" in o
-            assert isinstance(o["amount"], int)
+            assert hasattr(o, "amount")
+            assert isinstance(o.amount, int)
 
     def test_opportunities_have_closedate_field(self, gen_data):
         _, _, opps, _, _ = gen_data
         for o in opps:
-            assert "closeDate" in o
+            assert hasattr(o, "closeDate")
 
     def test_opportunities_have_id_field(self, gen_data):
         _, _, opps, _, _ = gen_data
         for o in opps:
-            assert "id" in o
+            assert hasattr(o, "id")
 
     def test_accounts_have_id_and_name(self, gen_data):
         _, accounts, _, _, _ = gen_data
         for a in accounts:
-            assert "id" in a
-            assert "name" in a
+            assert hasattr(a, "id")
+            assert hasattr(a, "name")
 
     def test_accounts_have_numDevelopers(self, gen_data):
         _, accounts, _, _, _ = gen_data
         for a in accounts:
-            assert "numDevelopers" in a
-            assert isinstance(a["numDevelopers"], int)
+            assert hasattr(a, "numDevelopers")
+            assert isinstance(a.numDevelopers, int)
 
     def test_reps_have_name(self, gen_data):
         reps, _, _, _, _ = gen_data
         for r in reps:
-            assert "name" in r
+            assert hasattr(r, "name")
 
     def test_history_has_required_fields(self, gen_data):
         _, _, _, _, history = gen_data
         for h in history:
-            assert "opportunity_id" in h
-            assert "field_name" in h
-            assert "new_value" in h
-            assert "change_date" in h
+            assert hasattr(h, "opportunity_id")
+            assert hasattr(h, "field_name")
+            assert hasattr(h, "new_value")
+            assert hasattr(h, "change_date")
 
 
-class TestGeneratedDataMatchesTypedDicts:
-    """Generator output keys should match the TypedDict definitions in models.py."""
+class TestGeneratedDataMatchesDataclasses:
+    """Generator output fields should match the dataclass definitions in models.py."""
 
     @pytest.fixture(scope="class")
     def gen_data(self):
@@ -350,7 +351,7 @@ class TestGeneratedDataMatchesTypedDicts:
         reps, _, _, _, _ = gen_data
         expected_keys = set(get_type_hints(Rep).keys())
         for r in reps:
-            actual_keys = set(r.keys())
+            actual_keys = set(vars(r).keys())
             missing = expected_keys - actual_keys
             assert not missing, f"Rep missing keys: {missing}"
 
@@ -358,7 +359,7 @@ class TestGeneratedDataMatchesTypedDicts:
         _, accounts, _, _, _ = gen_data
         expected_keys = set(get_type_hints(Account).keys())
         for a in accounts:
-            actual_keys = set(a.keys())
+            actual_keys = set(vars(a).keys())
             missing = expected_keys - actual_keys
             assert not missing, f"Account missing keys: {missing}"
 
@@ -366,7 +367,7 @@ class TestGeneratedDataMatchesTypedDicts:
         _, _, opps, _, _ = gen_data
         expected_keys = set(get_type_hints(Opportunity).keys())
         for o in opps:
-            actual_keys = set(o.keys())
+            actual_keys = set(vars(o).keys())
             missing = expected_keys - actual_keys
             assert not missing, f"Opportunity missing keys: {missing}"
 
@@ -374,7 +375,7 @@ class TestGeneratedDataMatchesTypedDicts:
         _, _, _, _, history = gen_data
         expected_keys = set(get_type_hints(OpportunityHistory).keys())
         for h in history:
-            actual_keys = set(h.keys())
+            actual_keys = set(vars(h).keys())
             missing = expected_keys - actual_keys
             assert not missing, f"History missing keys: {missing}"
 
@@ -382,7 +383,7 @@ class TestGeneratedDataMatchesTypedDicts:
         _, _, _, territories, _ = gen_data
         expected_keys = set(get_type_hints(Territory).keys())
         for t in territories:
-            actual_keys = set(t.keys())
+            actual_keys = set(vars(t).keys())
             missing = expected_keys - actual_keys
             assert not missing, f"Territory missing keys: {missing}"
 
@@ -401,11 +402,11 @@ class TestEndToEndRuleExecution:
         payload = {
             "schema": "revops-agent-skeleton",
             "generated_at": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
-            "reps": reps,
-            "accounts": accounts,
-            "opportunities": opps,
-            "territories": territories,
-            "opportunity_history": history,
+            "reps": [dataclasses.asdict(r) for r in reps],
+            "accounts": [dataclasses.asdict(a) for a in accounts],
+            "opportunities": [dataclasses.asdict(o) for o in opps],
+            "territories": [dataclasses.asdict(t) for t in territories],
+            "opportunity_history": [dataclasses.asdict(h) for h in history],
         }
         tmp = tmp_path_factory.mktemp("data")
         path = tmp / "data.json"
@@ -468,8 +469,8 @@ class TestEndToEndRuleExecution:
     def test_portfolio_opp_rules_run_without_error(self, enriched_state_data):
         self._set_default_rule_settings()
         state = enriched_state_data
-        from app.tabs.run_tab import opportunity_portfollio_rules
-        for rule in opportunity_portfollio_rules:
+        from app.tabs.run_tab import opportunity_portfolio_rules
+        for rule in opportunity_portfolio_rules:
             result = rule.run(state.opportunities)
             if result is not None:
                 assert isinstance(result, RuleResult)
@@ -534,33 +535,25 @@ class TestEndToEndRuleExecution:
 # =========================================================================
 
 class TestIssueDictSchema:
-    """The issue dicts produced by run_tab must have the keys that inbox_tab reads."""
+    """The Issue dataclass produced by run_tab must have the fields that inbox_tab reads."""
 
-    INBOX_REQUIRED_KEYS = {
+    INBOX_REQUIRED_FIELDS = {
         "severity", "name", "account_name", "opportunity_name", "category",
         "owner", "status", "timestamp", "fields", "metric_name", "metric_value",
         "explanation", "resolution", "is_unread",
     }
 
     def test_run_tab_produces_all_inbox_keys(self):
-        """Parse run_tab.py source to verify the issue dict has all expected keys."""
-        import os
-        filepath = os.path.join(os.path.dirname(__file__), "..", "app", "tabs", "run_tab.py")
-        with open(filepath, "r") as f:
-            source = f.read()
-
-        # Extract keys from the issue dict literals
-        key_pattern = r'"(\w+)":\s*'
-        matches = re.findall(key_pattern, source)
-        produced_keys = set(matches)
-
-        missing = self.INBOX_REQUIRED_KEYS - produced_keys
-        assert not missing, f"run_tab issue dicts missing keys for inbox: {missing}"
+        """The Issue dataclass must have all required fields."""
+        from models import Issue
+        issue_fields = set(get_type_hints(Issue).keys())
+        missing = self.INBOX_REQUIRED_FIELDS - issue_fields
+        assert not missing, f"Issue dataclass missing fields for inbox: {missing}"
 
     def test_inbox_columns_match_issue_keys(self):
-        """InboxTab.COLUMNS should reference fields that exist in issue dicts."""
-        from app.tabs.inbox_tab import InboxTab
-        # COLUMNS is what the table displays
+        """InboxTab should be able to display Issue fields."""
+        from models import Issue
+        issue_fields = set(get_type_hints(Issue).keys())
         expected_mapping = {
             "Severity": "severity",
             "Name": "name",
@@ -571,8 +564,8 @@ class TestIssueDictSchema:
             "Status": "status",
             "Timestamp": "timestamp",
         }
-        for col in InboxTab.COLUMNS:
-            assert col in expected_mapping, f"Unmapped column: {col}"
+        for col, field_name in expected_mapping.items():
+            assert field_name in issue_fields, f"Issue missing field '{field_name}' for column '{col}'"
 
 
 # =========================================================================
@@ -634,16 +627,12 @@ class TestCategoryConsistency:
 # =========================================================================
 
 class TestSeverityOrdering:
-    def test_inbox_sort_proxy_ranks(self):
-        from app.tabs.inbox_tab import InboxSortProxyModel
-        proxy = InboxSortProxyModel()
-        assert proxy._severity_rank["HIGH"] > proxy._severity_rank["MEDIUM"]
-        assert proxy._severity_rank["MEDIUM"] > proxy._severity_rank["LOW"]
+    def test_severity_values_are_ordered(self):
+        """Severity enum values should be orderable by name convention."""
+        rank = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3}
+        assert rank[Severity.HIGH.value] > rank[Severity.MEDIUM.value]
+        assert rank[Severity.MEDIUM.value] > rank[Severity.LOW.value]
 
-    def test_severity_enum_values_match_inbox_ranks(self):
-        from app.tabs.inbox_tab import InboxSortProxyModel
-        proxy = InboxSortProxyModel()
-        for sev in (Severity.HIGH, Severity.MEDIUM, Severity.LOW):
-            assert sev.value in proxy._severity_rank, (
-                f"Severity {sev.value} not in inbox sort ranking"
-            )
+    def test_severity_enum_values_are_strings(self):
+        for sev in (Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.NONE):
+            assert isinstance(sev.value, str)

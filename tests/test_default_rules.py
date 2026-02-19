@@ -1,6 +1,8 @@
 """Tests for all rules in rules/default_rules/."""
 import pytest
+from types import SimpleNamespace
 
+from models import Account, Opportunity, Rep
 from rules.severity import Severity
 from rules.rule import Rule
 from rules.rule_result import RuleResult
@@ -35,7 +37,7 @@ class TestMissingCloseDateRule:
         assert self.rule.rule_type == "opportunity"
 
     def test_metric_extracts_closedate_and_stage(self):
-        opp = {"closeDate": "2026-06-01", "stage": "2 - Discovery"}
+        opp = Opportunity(id=1, name="Test", amount=100, stage="2 - Discovery", closeDate="2026-06-01")
         m = self.metric(opp)
         assert m == {"closeDate": "2026-06-01", "stage": "2 - Discovery"}
 
@@ -61,7 +63,8 @@ class TestMissingCloseDateRule:
         assert self.condition({"closeDate": None, "stage": "Unknown"}) == Severity.HIGH
 
     def test_responsible_returns_owner(self):
-        assert self.responsible({"owner": "Alice"}) == "Alice"
+        opp = Opportunity(id=1, name="Test", amount=100, stage="2 - Discovery", owner="Alice")
+        assert self.responsible(opp) == "Alice"
 
     def test_format_metric_value(self):
         result = self.format_metric({"closeDate": None, "stage": "2 - Discovery"})
@@ -75,8 +78,8 @@ class TestMissingCloseDateRule:
         assert "high" in expl.lower()
 
     def test_full_run_fires_on_missing(self):
-        opp = {"closeDate": None, "stage": "3 - Solutioning", "owner": "Bob",
-               "account_name": "Acme", "name": "Deal"}
+        opp = Opportunity(id=1, name="Deal", amount=100, stage="3 - Solutioning",
+                          closeDate=None, owner="Bob", account_name="Acme")
         RuleSettings.set("missing_close_date.low_max_stage", 1)
         RuleSettings.set("missing_close_date.medium_max_stage", 2)
         result = self.rule.run(opp)
@@ -84,8 +87,8 @@ class TestMissingCloseDateRule:
         assert result.severity == "HIGH"
 
     def test_full_run_returns_none_when_present(self):
-        opp = {"closeDate": "2026-06-01", "stage": "3 - Solutioning", "owner": "Bob",
-               "account_name": "Acme", "name": "Deal"}
+        opp = Opportunity(id=1, name="Deal", amount=100, stage="3 - Solutioning",
+                          closeDate="2026-06-01", owner="Bob", account_name="Acme")
         result = self.rule.run(opp)
         assert result is None
 
@@ -121,7 +124,7 @@ class TestAmountOutlierRule:
         assert self.rule.rule_type == "opportunity"
 
     def test_metric_extracts_amount_and_stage(self):
-        opp = {"amount": 500_000, "stage": "3 - Solutioning"}
+        opp = Opportunity(id=1, name="Test", amount=500_000, stage="3 - Solutioning")
         m = self.metric(opp)
         assert m == {"amount": 500_000, "stage": "3 - Solutioning"}
 
@@ -185,10 +188,12 @@ class TestAmountOutlierRule:
         assert self.condition("not a dict") == Severity.NONE
 
     def test_responsible_returns_owner(self):
-        assert self.responsible({"owner": "Bob"}) == "Bob"
+        opp = Opportunity(id=1, name="Test", amount=100, stage="2", owner="Bob")
+        assert self.responsible(opp) == "Bob"
 
     def test_responsible_missing_owner(self):
-        assert self.responsible({}) == ""
+        opp = Opportunity(id=1, name="Test", amount=100, stage="2", owner="")
+        assert self.responsible(opp) == ""
 
     def test_format_metric_value_with_dict(self):
         result = self.format_metric({"amount": 500_000, "stage": "3 - Solutioning"})
@@ -246,15 +251,15 @@ class TestDuplicateAcctRule:
         assert self.rule.rule_type == "portfolio_acct"
 
     def test_metric_no_duplicates(self):
-        accounts = [{"name": "A"}, {"name": "B"}, {"name": "C"}]
+        accounts = [SimpleNamespace(name="A"), SimpleNamespace(name="B"), SimpleNamespace(name="C")]
         assert self.metric(accounts) == 0
 
     def test_metric_with_duplicates(self):
-        accounts = [{"name": "A"}, {"name": "A"}, {"name": "B"}]
+        accounts = [SimpleNamespace(name="A"), SimpleNamespace(name="A"), SimpleNamespace(name="B")]
         assert self.metric(accounts) == 1
 
     def test_metric_multiple_duplicates(self):
-        accounts = [{"name": "A"}, {"name": "A"}, {"name": "A"}, {"name": "B"}, {"name": "B"}]
+        accounts = [SimpleNamespace(name="A"), SimpleNamespace(name="A"), SimpleNamespace(name="A"), SimpleNamespace(name="B"), SimpleNamespace(name="B")]
         assert self.metric(accounts) == 3
 
     def test_condition_high_when_duplicates_exist(self):
@@ -272,13 +277,13 @@ class TestDuplicateAcctRule:
         assert "duplicate" in expl.lower()
 
     def test_full_run_with_duplicates(self):
-        accounts = [{"name": "A"}, {"name": "A"}, {"name": "B"}]
+        accounts = [SimpleNamespace(name="A"), SimpleNamespace(name="A"), SimpleNamespace(name="B")]
         result = self.rule.run(accounts)
         assert result is not None
         assert result.severity == "HIGH"
 
     def test_full_run_no_duplicates(self):
-        accounts = [{"name": "A"}, {"name": "B"}, {"name": "C"}]
+        accounts = [SimpleNamespace(name="A"), SimpleNamespace(name="B"), SimpleNamespace(name="C")]
         result = self.rule.run(accounts)
         assert result is None
 
@@ -306,13 +311,13 @@ class TestNoOpps:
         assert self.rule.rule_type == "account"
 
     def test_metric_zero_when_no_matching_opps(self):
-        acct = {"id": 1}
-        opps = [{"accountId": 2}, {"accountId": 3}]
+        acct = SimpleNamespace(id=1)
+        opps = [SimpleNamespace(accountId=2), SimpleNamespace(accountId=3)]
         assert self.metric(acct, opps) == 0
 
     def test_metric_counts_matching_opps(self):
-        acct = {"id": 1}
-        opps = [{"accountId": 1}, {"accountId": 2}, {"accountId": 1}]
+        acct = SimpleNamespace(id=1)
+        opps = [SimpleNamespace(accountId=1), SimpleNamespace(accountId=2), SimpleNamespace(accountId=1)]
         assert self.metric(acct, opps) == 2
 
     def test_condition_high_when_zero(self):
@@ -323,7 +328,8 @@ class TestNoOpps:
         assert self.condition(5) == Severity.NONE
 
     def test_responsible(self):
-        assert self.responsible({"owner": "Alice"}) == "Alice"
+        acct = SimpleNamespace(owner="Alice")
+        assert self.responsible(acct) == "Alice"
 
     def test_explanation_zero(self):
         assert "no opportunities" in self.explanation("", 0).lower()
@@ -332,15 +338,15 @@ class TestNoOpps:
         assert self.explanation("", 1) == ""
 
     def test_full_run_fires(self):
-        acct = {"id": 1, "name": "Acme", "owner": "Alice"}
-        opps = [{"accountId": 2}]
+        acct = SimpleNamespace(id=1, name="Acme", owner="Alice")
+        opps = [SimpleNamespace(accountId=2)]
         result = self.rule.run(acct, other_context=opps)
         assert result is not None
         assert result.severity == "HIGH"
 
     def test_full_run_none_when_has_opps(self):
-        acct = {"id": 1, "name": "Acme", "owner": "Alice"}
-        opps = [{"accountId": 1}]
+        acct = SimpleNamespace(id=1, name="Acme", owner="Alice")
+        opps = [SimpleNamespace(accountId=1)]
         result = self.rule.run(acct, other_context=opps)
         assert result is None
 
@@ -368,18 +374,18 @@ class TestAcctPerRep:
         assert self.rule.rule_type == "rep"
 
     def test_metric_counts_unique_accounts(self):
-        rep = {"name": "Alice"}
+        rep = SimpleNamespace(name="Alice")
         opps = [
-            {"owner": "Alice", "accountId": 1},
-            {"owner": "Alice", "accountId": 1},
-            {"owner": "Alice", "accountId": 2},
-            {"owner": "Bob", "accountId": 3},
+            SimpleNamespace(owner="Alice", accountId=1),
+            SimpleNamespace(owner="Alice", accountId=1),
+            SimpleNamespace(owner="Alice", accountId=2),
+            SimpleNamespace(owner="Bob", accountId=3),
         ]
         assert self.metric(rep, opps) == 2
 
     def test_metric_zero_for_no_matching(self):
-        rep = {"name": "Charlie"}
-        opps = [{"owner": "Alice", "accountId": 1}]
+        rep = SimpleNamespace(name="Charlie")
+        opps = [SimpleNamespace(owner="Alice", accountId=1)]
         assert self.metric(rep, opps) == 0
 
     def test_condition_none_below_threshold(self):
@@ -440,17 +446,17 @@ class TestPipelineImbalance:
         assert self.rule.rule_type == "rep"
 
     def test_metric_sums_amounts(self):
-        rep = {"name": "Alice"}
+        rep = SimpleNamespace(name="Alice")
         opps = [
-            {"owner": "Alice", "amount": 100_000},
-            {"owner": "Alice", "amount": 200_000},
-            {"owner": "Bob", "amount": 500_000},
+            SimpleNamespace(owner="Alice", amount=100_000),
+            SimpleNamespace(owner="Alice", amount=200_000),
+            SimpleNamespace(owner="Bob", amount=500_000),
         ]
         assert self.metric(rep, opps) == 300_000
 
     def test_metric_zero_for_no_matching(self):
-        rep = {"name": "Charlie"}
-        opps = [{"owner": "Alice", "amount": 100_000}]
+        rep = SimpleNamespace(name="Charlie")
+        opps = [SimpleNamespace(owner="Alice", amount=100_000)]
         assert self.metric(rep, opps) == 0
 
     def test_condition_none_below(self):
@@ -509,10 +515,10 @@ class TestPortfolioEarlyStageConcentration:
 
     def test_metric_counts_early_stages(self):
         opps = [
-            {"stage": "0 - New Opportunity"},
-            {"stage": "1 - Qualification"},
-            {"stage": "3 - Solutioning"},
-            {"stage": "5 - Negotiation"},
+            SimpleNamespace(stage="0 - New Opportunity"),
+            SimpleNamespace(stage="1 - Qualification"),
+            SimpleNamespace(stage="3 - Solutioning"),
+            SimpleNamespace(stage="5 - Negotiation"),
         ]
         m = self.metric(opps)
         assert m["total_opps"] == 4
@@ -547,7 +553,7 @@ class TestPortfolioEarlyStageConcentration:
         assert "Ratio:" in result
 
     def test_full_run_fires(self):
-        opps = [{"stage": "0 - New Opportunity"}] * 7 + [{"stage": "3 - Solutioning"}] * 3
+        opps = [SimpleNamespace(stage="0 - New Opportunity")] * 7 + [SimpleNamespace(stage="3 - Solutioning")] * 3
         RuleSettings.set("portfolio_early_stage_concentration.low_pct", 35)
         RuleSettings.set("portfolio_early_stage_concentration.medium_pct", 45)
         RuleSettings.set("portfolio_early_stage_concentration.high_pct", 60)
@@ -579,11 +585,11 @@ class TestRepEarlyStageConcentration:
         assert self.rule.rule_type == "rep"
 
     def test_metric_filters_by_rep(self):
-        rep = {"name": "Alice"}
+        rep = SimpleNamespace(name="Alice")
         opps = [
-            {"owner": "Alice", "stage": "0 - New Opportunity"},
-            {"owner": "Alice", "stage": "3 - Solutioning"},
-            {"owner": "Bob", "stage": "0 - New Opportunity"},
+            SimpleNamespace(owner="Alice", stage="0 - New Opportunity"),
+            SimpleNamespace(owner="Alice", stage="3 - Solutioning"),
+            SimpleNamespace(owner="Bob", stage="0 - New Opportunity"),
         ]
         m = self.metric(rep, opps)
         assert m["total_opps"] == 2
@@ -601,7 +607,8 @@ class TestRepEarlyStageConcentration:
         assert self.condition({"total_opps": 10, "stage_0_and_1_opps": 8}) == Severity.HIGH
 
     def test_responsible_returns_rep_name(self):
-        assert self.responsible({"name": "Alice"}) == "Alice"
+        rep = SimpleNamespace(name="Alice")
+        assert self.responsible(rep) == "Alice"
 
     def test_format_value(self):
         result = self.format_value({"total_opps": 10, "stage_0_and_1_opps": 4})
@@ -659,7 +666,8 @@ class TestSlippingRule:
         assert self.condition(dates) == Severity.NONE
 
     def test_responsible_returns_owner(self):
-        assert self.responsible({"owner": "Bob"}) == "Bob"
+        opp = Opportunity(id=1, name="Test", amount=100, stage="2", owner="Bob")
+        assert self.responsible(opp) == "Bob"
 
     def test_format_value(self):
         dates = ["2026-01-01", "2026-02-01", "2026-03-01"]
@@ -717,7 +725,8 @@ class TestStalenessRule:
         assert self.condition({"days_since_last_change": 100, "last_change_date": None}) == Severity.HIGH
 
     def test_responsible(self):
-        assert self.responsible({"owner": "Alice"}) == "Alice"
+        opp = Opportunity(id=1, name="Test", amount=100, stage="2", owner="Alice")
+        assert self.responsible(opp) == "Alice"
 
 
 # =========================================================================
@@ -743,8 +752,8 @@ class TestUndercoverTam:
         assert self.rule.rule_type == "account"
 
     def test_metric_no_opps(self):
-        acct = {"id": 1, "numDevelopers": 50}
-        opps = [{"accountId": 2, "amount": 100}]
+        acct = SimpleNamespace(id=1, numDevelopers=50)
+        opps = [SimpleNamespace(accountId=2, amount=100)]
         RuleSettings.set("tam.revenue_per_developer", 1000)
         RuleSettings.set("tam.coverage_percentage", 50)
         m = self.metric(acct, opps)
@@ -752,10 +761,10 @@ class TestUndercoverTam:
         assert m["coverage"] == 100
 
     def test_metric_with_opps(self):
-        acct = {"id": 1, "numDevelopers": 100}
+        acct = SimpleNamespace(id=1, numDevelopers=100)
         opps = [
-            {"accountId": 1, "amount": 10_000},
-            {"accountId": 1, "amount": 15_000},
+            SimpleNamespace(accountId=1, amount=10_000),
+            SimpleNamespace(accountId=1, amount=15_000),
         ]
         RuleSettings.set("tam.revenue_per_developer", 1000)
         RuleSettings.set("tam.coverage_percentage", 50)
@@ -783,7 +792,8 @@ class TestUndercoverTam:
         assert self.condition({"coverage": 30}) == Severity.HIGH
 
     def test_responsible(self):
-        assert self.responsible({"owner": "Alice"}) == "Alice"
+        acct = SimpleNamespace(owner="Alice")
+        assert self.responsible(acct) == "Alice"
 
     def test_explanation_under_coverage(self):
         expl = self.explanation("TAM", {"tam": 50_000, "pipeline": 10_000, "coverage": 20})

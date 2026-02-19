@@ -1,6 +1,7 @@
 """Tests for rules.rule module."""
 import pytest
 from datetime import datetime
+from types import SimpleNamespace
 
 from rules.rule import Rule
 from rules.rule_result import RuleResult
@@ -111,7 +112,7 @@ class TestRuleRun:
             resolution="Do something",
             fields=["field1"],
         )
-        opp = {"account_name": "Acme", "name": "Deal"}
+        opp = SimpleNamespace(account_name="Acme", name="Deal")
         result = r.run(opp)
         assert isinstance(result, RuleResult)
         assert result.name == "Test"
@@ -133,7 +134,7 @@ class TestRuleRun:
             metric=lambda obj: 1,
             condition=lambda val: Severity.LOW,
         )
-        opp = {"account_name": "ACME", "name": "Big Deal"}
+        opp = SimpleNamespace(account_name="ACME", name="Big Deal")
         result = r.run(opp)
         assert result.account_name == "ACME"
         assert result.opportunity_name == "Big Deal"
@@ -144,7 +145,7 @@ class TestRuleRun:
             metric=lambda obj: 1,
             condition=lambda val: Severity.LOW,
         )
-        acct = {"name": "ACME Corp"}
+        acct = SimpleNamespace(name="ACME Corp")
         result = r.run(acct)
         assert result.account_name == "ACME Corp"
         assert result.opportunity_name == ""

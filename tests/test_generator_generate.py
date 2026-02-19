@@ -165,60 +165,60 @@ class TestGenerate:
     def test_rep_ids_sequential(self, generated_data):
         reps, _, _, _, _ = generated_data
         for i, r in enumerate(reps, 1):
-            assert r["id"] == i
+            assert r.id == i
 
     def test_account_ids_sequential(self, generated_data):
         _, accounts, _, _, _ = generated_data
         for i, a in enumerate(accounts, 1):
-            assert a["id"] == i
+            assert a.id == i
 
     def test_opportunity_ids_sequential(self, generated_data):
         _, _, opps, _, _ = generated_data
         for i, o in enumerate(opps, 1):
-            assert o["id"] == i
+            assert o.id == i
 
     def test_unique_rep_names(self, generated_data):
         reps, _, _, _, _ = generated_data
-        names = [r["name"] for r in reps]
+        names = [r.name for r in reps]
         assert len(set(names)) == len(names)
 
     def test_unique_account_names(self, generated_data):
         _, accounts, _, _, _ = generated_data
-        names = [a["name"] for a in accounts]
+        names = [a.name for a in accounts]
         assert len(set(names)) == len(names)
 
     def test_unique_opportunity_names(self, generated_data):
         _, _, opps, _, _ = generated_data
-        names = [o["name"] for o in opps]
+        names = [o.name for o in opps]
         assert len(set(names)) == len(names)
 
     def test_total_pipeline_in_range(self, generated_data):
         _, _, opps, _, _ = generated_data
-        total = sum(o["amount"] for o in opps)
+        total = sum(o.amount for o in opps)
         assert settings.TOTAL_PIPELINE_MIN <= total <= settings.TOTAL_PIPELINE_MAX
 
     def test_opportunity_amounts_non_negative(self, generated_data):
         _, _, opps, _, _ = generated_data
         for o in opps:
-            assert o["amount"] >= 0
+            assert o.amount >= 0
 
     def test_account_repid_valid(self, generated_data):
         reps, accounts, _, _, _ = generated_data
-        rep_ids = {r["id"] for r in reps}
+        rep_ids = {r.id for r in reps}
         for a in accounts:
-            assert a["repId"] in rep_ids
+            assert a.repId in rep_ids
 
     def test_opportunity_accountid_valid(self, generated_data):
         _, accounts, opps, _, _ = generated_data
-        acct_ids = {a["id"] for a in accounts}
+        acct_ids = {a.id for a in accounts}
         for o in opps:
-            assert o["accountId"] in acct_ids
+            assert o.accountId in acct_ids
 
     def test_opportunity_repid_matches_account(self, generated_data):
         _, accounts, opps, _, _ = generated_data
-        acct_rep = {a["id"]: a["repId"] for a in accounts}
+        acct_rep = {a.id: a.repId for a in accounts}
         for o in opps:
-            assert o["repId"] == acct_rep[o["accountId"]]
+            assert o.repId == acct_rep[o.accountId]
 
     def test_territories_exist(self, generated_data):
         _, _, _, territories, _ = generated_data
@@ -230,52 +230,52 @@ class TestGenerate:
 
     def test_opportunity_history_references_valid_opps(self, generated_data):
         _, _, opps, _, history = generated_data
-        opp_ids = {o["id"] for o in opps}
+        opp_ids = {o.id for o in opps}
         for h in history:
-            assert h["opportunity_id"] in opp_ids
+            assert h.opportunity_id in opp_ids
 
     def test_history_field_names_valid(self, generated_data):
         _, _, _, _, history = generated_data
         valid_fields = {"stage", "closeDate"}
         for h in history:
-            assert h["field_name"] in valid_fields
+            assert h.field_name in valid_fields
 
     def test_close_date_distribution(self, generated_data):
         _, _, opps, _, _ = generated_data
-        missing = sum(1 for o in opps if o["closeDate"] is None)
+        missing = sum(1 for o in opps if o.closeDate is None)
         expected_missing = int(round(settings.NUM_OPPORTUNITIES * settings.MISSING_CLOSE_PCT))
         assert missing == expected_missing
 
     def test_reps_have_quotas(self, generated_data):
         reps, _, _, _, _ = generated_data
         for r in reps:
-            assert isinstance(r["quota"], int)
-            assert r["quota"] > 0
+            assert isinstance(r.quota, int)
+            assert r.quota > 0
 
     def test_reps_have_regions(self, generated_data):
         reps, _, _, _, _ = generated_data
         for r in reps:
-            assert isinstance(r["region"], str)
-            assert r["region"] != ""
+            assert isinstance(r.region, str)
+            assert r.region != ""
 
     def test_reps_have_home_state(self, generated_data):
         reps, _, _, _, _ = generated_data
         for r in reps:
-            assert isinstance(r["homeState"], str)
-            assert r["homeState"] != ""
+            assert isinstance(r.homeState, str)
+            assert r.homeState != ""
 
     def test_accounts_have_state_matching_rep(self, generated_data):
         reps, accounts, _, _, _ = generated_data
-        rep_by_id = {r["id"]: r for r in reps}
+        rep_by_id = {r.id: r for r in reps}
         for a in accounts:
-            rep = rep_by_id[a["repId"]]
-            assert a["state"] == rep["homeState"]
+            rep = rep_by_id[a.repId]
+            assert a.state == rep.homeState
 
     def test_created_date_present(self, generated_data):
         _, _, opps, _, _ = generated_data
         for o in opps:
-            assert "created_date" in o
-            assert _is_ymd(o["created_date"])
+            assert hasattr(o, "created_date")
+            assert _is_ymd(o.created_date)
 
     def test_deterministic_with_same_seed(self):
         r1 = generate(seed=42)
@@ -287,6 +287,6 @@ class TestGenerate:
     def test_different_seed_produces_different_data(self):
         r1 = generate(seed=1)
         r2 = generate(seed=2)
-        names1 = [r["name"] for r in r1[0]]
-        names2 = [r["name"] for r in r2[0]]
+        names1 = [r.name for r in r1[0]]
+        names2 = [r.name for r in r2[0]]
         assert names1 != names2
