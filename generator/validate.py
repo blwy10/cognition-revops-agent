@@ -108,7 +108,10 @@ def validate(
             rep_id == acct_by_id[acct_id]["repId"],
             f"Opportunity {o['id']} repId must equal parent account.repId",
         )
-        _assert(_is_ymd(o.get("closeDate", "")), f"Opportunity {o['id']} closeDate must be YYYY-MM-DD")
+
+        close_date = o.get("closeDate")
+        if close_date is not None:
+            _assert(_is_ymd(str(close_date)), f"Opportunity {o['id']} closeDate must be YYYY-MM-DD")
         _assert(isinstance(o.get("amount"), int) and o["amount"] >= 0, f"Opportunity {o['id']} amount must be int >= 0")
         opps_by_acct[acct_id].append(o)
 
@@ -133,13 +136,17 @@ def validate(
 
     recent = 0
     for o in opportunities:
-        d = _dt.date.fromisoformat(o["closeDate"])
+        close_date = o.get("closeDate")
+        if close_date is None:
+            continue
+
+        d = _dt.date.fromisoformat(str(close_date))
         if recent_start <= d <= recent_end:
             recent += 1
         else:
             _assert(
                 future_start <= d <= future_end,
-                f"Opportunity {o['id']} closeDate outside allowed windows: {o['closeDate']}",
+                f"Opportunity {o['id']} closeDate outside allowed windows: {close_date}",
             )
 
     _assert(

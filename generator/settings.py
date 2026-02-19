@@ -83,6 +83,7 @@ AMOUNT_MULTIPLIER_MAX = 2.00
 RECENT_CLOSE_WINDOW = DateWindow(start="2025-10-01", end="2026-02-18")
 FUTURE_CLOSE_WINDOW = DateWindow(start="2026-02-19", end="2026-09-30")
 RECENT_CLOSE_PCT = 0.10
+MISSING_CLOSE_PCT = 0.05
 
 # Global pipeline target (after per-account TAM enforcement)
 TOTAL_PIPELINE_TARGET = 10_000_000

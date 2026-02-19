@@ -388,9 +388,24 @@ def generate(seed: int | None = None):
         # Keep spec exact for current 100-opportunity config.
         pass
 
-    recent_indices = set(rng.sample(list(range(len(opportunities))), recent_n))
+    missing_n = int(round(settings.NUM_OPPORTUNITIES * settings.MISSING_CLOSE_PCT))
+    if missing_n != int(settings.NUM_OPPORTUNITIES * settings.MISSING_CLOSE_PCT):
+        # Keep spec exact for current 100-opportunity config.
+        pass
+
+    all_indices = list(range(len(opportunities)))
+    missing_indices = set(rng.sample(all_indices, missing_n)) if missing_n > 0 else set()
+    eligible_for_dates = [i for i in all_indices if i not in missing_indices]
+    if recent_n > len(eligible_for_dates):
+        raise RuntimeError(
+            f"Invalid close date configuration: recent_n={recent_n} exceeds non-missing opportunities {len(eligible_for_dates)}"
+        )
+
+    recent_indices = set(rng.sample(eligible_for_dates, recent_n))
     for idx, o in enumerate(opportunities):
-        if idx in recent_indices:
+        if idx in missing_indices:
+            o["closeDate"] = None
+        elif idx in recent_indices:
             o["closeDate"] = rng.date_between(settings.RECENT_CLOSE_WINDOW.start, settings.RECENT_CLOSE_WINDOW.end)
         else:
             o["closeDate"] = rng.date_between(settings.FUTURE_CLOSE_WINDOW.start, settings.FUTURE_CLOSE_WINDOW.end)

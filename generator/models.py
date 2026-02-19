@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Optional
 from typing import TypedDict
 
 
@@ -30,7 +31,7 @@ class Opportunity(TypedDict):
     name: str
     amount: int
     stage: str
-    closeDate: str
+    closeDate: Optional[str]
     repId: int
     accountId: int
 
