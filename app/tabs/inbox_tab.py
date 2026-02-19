@@ -1,415 +1,178 @@
 from __future__ import annotations
 
-import csv
 from typing import Optional
 
-from PySide6.QtCore import QObject, QPoint, QSettings, QSortFilterProxyModel, QTimer, Qt
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QStandardItem, QStandardItemModel
+from PySide6.QtCore import QDateTime, QObject, QTimer, Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QFormLayout,
     QHBoxLayout,
-    QFileDialog,
-    QLineEdit,
-    QMessageBox,
     QPushButton,
-    QSizePolicy,
     QSplitter,
-    QStyle,
-    QTableView,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from app.state import AppState
-from models import Issue
-
-
-class InboxSortProxyModel(QSortFilterProxyModel):
-    def __init__(self, parent: Optional[QObject] = None) -> None:
-        super().__init__(parent)
-
-        self._severity_rank = {
-            "HIGH": 3,
-            "MEDIUM": 2,
-            "LOW": 1,
-        }
-        self._status_rank = {
-            "Open": 4,
-            "Acknowledged": 3,
-            "Snooze": 2,
-            "Snoozed": 2,
-            "Resolved": 1,
-        }
-
-    def lessThan(self, left, right) -> bool:  # type: ignore[override]
-        column = left.column()
-        if column == 0:
-            left_text = str(left.data(Qt.DisplayRole) or "").strip().upper()
-            right_text = str(right.data(Qt.DisplayRole) or "").strip().upper()
-            return self._severity_rank.get(left_text, 0) < self._severity_rank.get(right_text, 0)
-
-        if column == 6:
-            left_text = str(left.data(Qt.DisplayRole) or "").strip()
-            right_text = str(right.data(Qt.DisplayRole) or "").strip()
-            return self._status_rank.get(left_text, 0) < self._status_rank.get(right_text, 0)
-
-        return super().lessThan(left, right)
+from app.tabs.issue_detail_panel import IssueDetailPanel
+from app.tabs.issue_table_panel import IssueTablePanel
 
 
 class InboxTab(QWidget):
-    COLUMNS = ["Severity", "Name", "Account", "Opportunity", "Category", "Owner", "Status", "Timestamp"]
-    _SORT_SETTINGS_GROUP = "inbox_table"
-    _SORT_COLUMN_KEY = "sort_column"
-    _SORT_ORDER_KEY = "sort_order"
-
     def __init__(self, state: AppState, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.state = state
-        self._settings = QSettings("cognition", "revops-analysis-agent")
-
-        self._snooze_icon = self._make_flag_icon()
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
         outer.setSpacing(12)
+
         self.splitter = QSplitter(Qt.Horizontal, self)
         outer.addWidget(self.splitter)
 
-        self.left_widget = QWidget(self)
-        self.left_layout = QVBoxLayout(self.left_widget)
-        self.left_layout.setContentsMargins(0, 0, 0, 0)
-        self.left_layout.setSpacing(10)
+        # --- Left: issue table ---
+        self.table_panel = IssueTablePanel(self)
+        self.splitter.addWidget(self.table_panel)
 
-        self.table = QTableView(self)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setShowGrid(False)
-        self.table.verticalHeader().setVisible(False)
-        self.table.setWordWrap(False)
-        self.table.setSortingEnabled(True)
+        # --- Right: action buttons + detail form ---
+        right_widget = QWidget(self)
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(10)
 
-        self.model = QStandardItemModel(self)
-        self.model.setHorizontalHeaderLabels(self.COLUMNS)
-
-        self.proxy_model = InboxSortProxyModel(self)
-        self.proxy_model.setSourceModel(self.model)
-        self.proxy_model.setDynamicSortFilter(True)
-
-        self.table.setModel(self.proxy_model)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-        self.table.horizontalHeader().sortIndicatorChanged.connect(self._on_sort_indicator_changed)
-
-        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        self.left_layout.addWidget(self.table, 1)
-
-        self.export_csv_button = QPushButton("Export Issues to CSV…")
-        self.export_csv_button.setEnabled(False)
-        self.left_layout.addWidget(self.export_csv_button)
-
-        self.splitter.addWidget(self.left_widget)
-
-        self.details_widget = QWidget(self)
-        self.details_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        self.details_layout = QVBoxLayout(self.details_widget)
-        self.details_layout.setContentsMargins(12, 12, 12, 12)
-        self.details_layout.setSpacing(10)
-
-        self.actionButtonLayout = QHBoxLayout()
-        self.actionButtonLayout.setContentsMargins(12, 12, 12, 12)
-        self.actionButtonLayout.setSpacing(10)
-
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(12, 12, 12, 12)
+        action_row.setSpacing(10)
         self.snooze_button = QPushButton("Snooze")
         self.resolve_button = QPushButton("Resolve")
         self.reopen_button = QPushButton("Reopen")
+        action_row.addWidget(self.snooze_button)
+        action_row.addWidget(self.resolve_button)
+        action_row.addWidget(self.reopen_button)
+        right_layout.addLayout(action_row)
 
-        self.actionButtonLayout.addWidget(self.snooze_button)
-        self.actionButtonLayout.addWidget(self.resolve_button)
-        self.actionButtonLayout.addWidget(self.reopen_button)
+        self.detail_panel = IssueDetailPanel(self)
+        right_layout.addWidget(self.detail_panel, 1)
 
-        self.details_form = QFormLayout()
-        self.details_form.setContentsMargins(12, 12, 12, 12)
-        self.details_form.setHorizontalSpacing(10)
-        self.details_form.setVerticalSpacing(8)
-        self.details_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-
-        self.severity_edit = QLineEdit()
-        self.severity_edit.setReadOnly(True)
-        self.name_edit = QLineEdit()
-        self.name_edit.setReadOnly(True)
-        self.account_name_edit = QLineEdit()
-        self.account_name_edit.setReadOnly(True)
-        self.opportunity_name_edit = QLineEdit()
-        self.opportunity_name_edit.setReadOnly(True)
-        self.category_edit = QLineEdit()
-        self.category_edit.setReadOnly(True)
-        self.owner_edit = QLineEdit()
-        self.owner_edit.setReadOnly(True)
-        self.status_edit = QLineEdit()
-        self.status_edit.setReadOnly(True)
-        self.timestamp_edit = QLineEdit()
-        self.timestamp_edit.setReadOnly(True)
-        self.fields_edit = QLineEdit()
-        self.fields_edit.setReadOnly(True)
-        self.metric_name_edit = QLineEdit()
-        self.metric_name_edit.setReadOnly(True)
-        self.metric_value_edit = QTextEdit()
-        self.metric_value_edit.setReadOnly(True)
-        self.explanation_edit = QTextEdit()
-        self.explanation_edit.setReadOnly(True)
-        self.resolution_edit = QTextEdit()
-        self.resolution_edit.setReadOnly(True)
-
-        for w in (
-            self.severity_edit,
-            self.name_edit,
-            self.account_name_edit,
-            self.opportunity_name_edit,
-            self.category_edit,
-            self.owner_edit,
-            self.status_edit,
-            self.timestamp_edit,
-            self.fields_edit,
-            self.metric_name_edit,
-        ):
-            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-        for w in (self.metric_value_edit, self.explanation_edit, self.resolution_edit):
-            w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        self.details_form.addRow("Severity", self.severity_edit)
-        self.details_form.addRow("Name", self.name_edit)
-        self.details_form.addRow("Account", self.account_name_edit)
-        self.details_form.addRow("Opportunity", self.opportunity_name_edit)
-        self.details_form.addRow("Category", self.category_edit)
-        self.details_form.addRow("Owner", self.owner_edit)
-        self.details_form.addRow("Status", self.status_edit)
-        self.details_form.addRow("Timestamp", self.timestamp_edit)
-        self.details_form.addRow("Fields", self.fields_edit)
-        self.details_form.addRow("Metric Name", self.metric_name_edit)
-        self.details_form.addRow("Metric Value", self.metric_value_edit)
-        self.details_form.addRow("Explanation", self.explanation_edit)
-        self.details_form.addRow("Resolution", self.resolution_edit)
-
-        self.details_layout.addLayout(self.actionButtonLayout)
-        self.details_layout.addLayout(self.details_form, 1)
-
-        self.splitter.addWidget(self.details_widget)
+        self.splitter.addWidget(right_widget)
         self.splitter.setSizes([480, 720])
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 2)
 
-        self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
-        self.state.issuesChanged.connect(self._rebuild_model)
-
-        self.export_csv_button.clicked.connect(self._on_export_csv_clicked)
+        # --- Wiring ---
+        self.table_panel.issueSelected.connect(self._on_issue_selected)
+        self.table_panel.selectionCleared.connect(self._on_selection_cleared)
+        self.table_panel.export_csv_button.clicked.connect(self._on_export_csv_clicked)
 
         self.snooze_button.clicked.connect(self._on_snooze_clicked)
         self.resolve_button.clicked.connect(self._on_resolve_clicked)
         self.reopen_button.clicked.connect(self._on_reopen_clicked)
+
+        self.state.issuesChanged.connect(self._rebuild_model)
 
         self._snooze_timer = QTimer(self)
         self._snooze_timer.setInterval(60_000)
         self._snooze_timer.timeout.connect(self._apply_snooze_expirations)
         self._snooze_timer.start()
 
-        self._restore_sort_settings()
         self._rebuild_model()
+
+    # ------------------------------------------------------------------
+    # Public (called by MainWindow on startup)
+    # ------------------------------------------------------------------
 
     def _rebuild_model(self) -> None:
         self._apply_snooze_expirations(emit_signals=False)
-        self.model.removeRows(0, self.model.rowCount())
+        self.table_panel.rebuild(self.state.issues)
 
-        self.export_csv_button.setEnabled(bool(self.state.issues))
+    # ------------------------------------------------------------------
+    # Selection handling
+    # ------------------------------------------------------------------
 
-        for idx, issue in enumerate(self.state.issues):
-            items = [
-                QStandardItem(str(issue.severity)),
-                QStandardItem(str(issue.name)),
-                QStandardItem(str(issue.account_name)),
-                QStandardItem(str(issue.opportunity_name)),
-                QStandardItem(str(issue.category)),
-                QStandardItem(str(issue.owner)),
-                QStandardItem(str(issue.status)),
-                QStandardItem(issue.timestamp.toString("yyyy-MM-dd") if issue.timestamp else ""),
-            ]
-
-            for item in items:
-                item.setData(idx, Qt.UserRole)
-
-            if issue.is_unread:
-                self._set_row_bold(items, True)
-
-            status = str(issue.status)
-            status_item = items[6]
-            if status == "Snoozed":
-                status_item.setIcon(self._snooze_icon)
-            elif status == "Resolved":
-                status_item.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
-
-            self.model.appendRow(items)
-
-        self._apply_current_sort()
-
-    def _on_export_csv_clicked(self) -> None:
-        issues = self.state.issues
-        if not issues:
-            return
-
-        run_id = getattr(self.state, "selected_run_id", None)
-        default_name = f"run-{run_id}-issues.csv" if run_id is not None else "issues.csv"
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Export Issues to CSV",
-            default_name,
-            "CSV Files (*.csv)",
-        )
-        if not path:
-            return
-        if not path.lower().endswith(".csv"):
-            path = f"{path}.csv"
-
-        import dataclasses as _dc
-
-        columns = [f.name for f in _dc.fields(Issue)]
-
-        def _cell(value) -> str:
-            if value is None:
-                return ""
-            if hasattr(value, "toString"):
-                try:
-                    return value.toString(Qt.ISODate)
-                except Exception:
-                    return str(value)
-            if isinstance(value, (list, tuple)):
-                return ", ".join(str(v) for v in value)
-            text = str(value)
-            text = text.replace("\r\n", "\n").replace("\r", "\n")
-            return text.replace("\n", "\\n")
-
-        try:
-            with open(path, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=columns)
-                writer.writeheader()
-                for issue in issues:
-                    row = {k: _cell(getattr(issue, k, None)) for k in columns}
-                    writer.writerow(row)
-        except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Could not export CSV:\n{e}")
-            return
-
-        QMessageBox.information(self, "Export Complete", f"Exported issues to:\n{path}")
-
-    def _apply_current_sort(self) -> None:
-        header = self.table.horizontalHeader()
-        column = int(header.sortIndicatorSection())
-        order = header.sortIndicatorOrder()
-        self.proxy_model.sort(column, order)
-
-    def _restore_sort_settings(self) -> None:
-        self._settings.beginGroup(self._SORT_SETTINGS_GROUP)
-        stored_column = self._settings.value(self._SORT_COLUMN_KEY, None)
-        stored_order = self._settings.value(self._SORT_ORDER_KEY, None)
-        self._settings.endGroup()
-
-        if stored_column is None or stored_order is None:
-            self.table.sortByColumn(0, Qt.SortOrder.DescendingOrder)
-            return
-
-        try:
-            column = int(stored_column)
-        except Exception:
-            column = 0
-
-        try:
-            order_int = int(stored_order)
-            order = Qt.SortOrder(order_int)
-        except Exception:
-            order = Qt.SortOrder.DescendingOrder
-
-        if column < 0 or column >= len(self.COLUMNS):
-            column = 0
-
-        self.table.sortByColumn(column, order)
-
-    def _persist_sort_settings(self, *, column: int, order: Qt.SortOrder) -> None:
-        self._settings.beginGroup(self._SORT_SETTINGS_GROUP)
-        self._settings.setValue(self._SORT_COLUMN_KEY, int(column))
-        self._settings.setValue(self._SORT_ORDER_KEY, int(order.value))
-        self._settings.endGroup()
-
-    def _on_sort_indicator_changed(self, column: int, order: Qt.SortOrder) -> None:
-        self._persist_sort_settings(column=column, order=order)
-
-    def _selected_issue_index(self) -> Optional[int]:
-        selected = self.table.selectionModel().selectedRows()
-        if not selected:
-            return None
-
-        source_row = self.proxy_model.mapToSource(selected[0]).row()
-        index_item = self.model.item(source_row, 0)
-        if index_item is None:
-            return None
-        issue_index = int(index_item.data(Qt.UserRole))
+    def _on_issue_selected(self, issue_index: int) -> None:
         if issue_index < 0 or issue_index >= len(self.state.issues):
-            return None
-        return issue_index
+            self.detail_panel.clear()
+            return
 
-    def _selected_row(self) -> Optional[int]:
-        selected = self.table.selectionModel().selectedRows()
-        if not selected:
-            return None
-        return self.proxy_model.mapToSource(selected[0]).row()
+        issue = self.state.issues[issue_index]
+        self.detail_panel.set_issue(issue)
 
-    def _update_row_visuals(self, *, row: int, issue: Issue) -> None:
-        status_item = self.model.item(row, 6)
-        if status_item is not None:
-            status_text = str(issue.status)
-            status_item.setText(status_text)
-            if status_text == "Snoozed":
-                status_item.setIcon(self._snooze_icon)
-            elif status_text == "Resolved":
-                status_item.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
-            else:
-                status_item.setIcon(QIcon())
+        source_row = self.table_panel.selected_source_row()
+
+        if issue.status == "Open":
+            issue.status = "Acknowledged"
+            if source_row is not None:
+                self.table_panel.update_status_cell(source_row, "Acknowledged")
+            self.state.stateChanged.emit()
 
         if issue.is_unread:
-            row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
-            self._set_row_bold([i for i in row_items if i is not None], True)
-        else:
-            row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
-            self._set_row_bold([i for i in row_items if i is not None], False)
+            issue.is_unread = False
+            if source_row is not None:
+                self.table_panel.mark_row_read(source_row)
+            self.state.stateChanged.emit()
 
-    def _make_flag_icon(self) -> QIcon:
-        size = 14
-        pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.transparent)
+    def _on_selection_cleared(self) -> None:
+        self.detail_panel.clear()
 
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+    # ------------------------------------------------------------------
+    # CSV export
+    # ------------------------------------------------------------------
 
-        pole_color = QColor(90, 90, 90)
-        flag_color = QColor(220, 60, 60)
+    def _on_export_csv_clicked(self) -> None:
+        self.table_panel.export_csv(
+            self.state.issues,
+            default_run_id=getattr(self.state, "selected_run_id", None),
+        )
 
-        painter.setPen(pole_color)
-        painter.drawLine(4, 2, 4, size - 2)
+    # ------------------------------------------------------------------
+    # Issue actions (snooze / resolve / reopen)
+    # ------------------------------------------------------------------
 
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(flag_color)
-        points = [
-            (5, 3),
-            (12, 5),
-            (5, 7),
-        ]
-        painter.drawPolygon([QPoint(x, y) for x, y in points])
+    def _on_snooze_clicked(self) -> None:
+        issue_index = self.table_panel.selected_issue_index()
+        if issue_index is None or issue_index >= len(self.state.issues):
+            return
+        row = self.table_panel.selected_source_row()
+        if row is None:
+            return
+        issue = self.state.issues[issue_index]
+        issue.status = "Snoozed"
+        issue.snoozed_until = QDateTime.currentDateTime().addDays(1)
+        self.table_panel.update_row_visuals(row=row, issue=issue)
+        self.detail_panel.status_edit.setText(str(issue.status))
+        self.state.stateChanged.emit()
 
-        painter.end()
-        return QIcon(pixmap)
+    def _on_resolve_clicked(self) -> None:
+        issue_index = self.table_panel.selected_issue_index()
+        if issue_index is None or issue_index >= len(self.state.issues):
+            return
+        row = self.table_panel.selected_source_row()
+        if row is None:
+            return
+        issue = self.state.issues[issue_index]
+        issue.status = "Resolved"
+        issue.snoozed_until = None
+        issue.is_unread = False
+        self.table_panel.update_row_visuals(row=row, issue=issue)
+        self.detail_panel.status_edit.setText(str(issue.status))
+        self.state.stateChanged.emit()
+
+    def _on_reopen_clicked(self) -> None:
+        issue_index = self.table_panel.selected_issue_index()
+        if issue_index is None or issue_index >= len(self.state.issues):
+            return
+        row = self.table_panel.selected_source_row()
+        if row is None:
+            return
+        issue = self.state.issues[issue_index]
+        issue.status = "Open"
+        issue.snoozed_until = None
+        issue.is_unread = True
+        self.table_panel.update_row_visuals(row=row, issue=issue)
+        self.detail_panel.status_edit.setText(str(issue.status))
+        self.state.stateChanged.emit()
+
+    # ------------------------------------------------------------------
+    # Snooze expiration
+    # ------------------------------------------------------------------
 
     def _apply_snooze_expirations(self, *, emit_signals: bool = True) -> bool:
         now = None
@@ -421,8 +184,6 @@ class InboxTab(QWidget):
             if snoozed_until is None:
                 continue
             if now is None:
-                from PySide6.QtCore import QDateTime
-
                 now = QDateTime.currentDateTime()
             try:
                 expired = bool(snoozed_until <= now)
@@ -441,127 +202,3 @@ class InboxTab(QWidget):
             self.state.stateChanged.emit()
 
         return changed
-
-    def _on_snooze_clicked(self) -> None:
-        issue_index = self._selected_issue_index()
-        if issue_index is None:
-            return
-        row = self._selected_row()
-        if row is None:
-            return
-        issue = self.state.issues[issue_index]
-        from PySide6.QtCore import QDateTime
-
-        issue.status = "Snoozed"
-        issue.snoozed_until = QDateTime.currentDateTime().addDays(1)
-        self._update_row_visuals(row=row, issue=issue)
-        self.status_edit.setText(str(issue.status))
-        self.state.stateChanged.emit()
-
-    def _on_resolve_clicked(self) -> None:
-        issue_index = self._selected_issue_index()
-        if issue_index is None:
-            return
-        row = self._selected_row()
-        if row is None:
-            return
-        issue = self.state.issues[issue_index]
-        issue.status = "Resolved"
-        issue.snoozed_until = None
-        issue.is_unread = False
-        self._update_row_visuals(row=row, issue=issue)
-        self.status_edit.setText(str(issue.status))
-        self.state.stateChanged.emit()
-
-    def _on_reopen_clicked(self) -> None:
-        issue_index = self._selected_issue_index()
-        if issue_index is None:
-            return
-        row = self._selected_row()
-        if row is None:
-            return
-        issue = self.state.issues[issue_index]
-        issue.status = "Open"
-        issue.snoozed_until = None
-        issue.is_unread = True
-        self._update_row_visuals(row=row, issue=issue)
-        self.status_edit.setText(str(issue.status))
-        self.state.stateChanged.emit()
-
-    def _set_row_bold(self, row_items: list[QStandardItem], bold: bool) -> None:
-        font = QFont()
-        font.setBold(bold)
-        for item in row_items:
-            item.setFont(font)
-
-    def _on_selection_changed(self) -> None:
-        selected = self.table.selectionModel().selectedRows()
-        if not selected:
-            self._clear_details()
-            return
-
-        source_row = self.proxy_model.mapToSource(selected[0]).row()
-        index_item = self.model.item(source_row, 0)
-        if index_item is None:
-            self._clear_details()
-            return
-
-        issue_index = int(index_item.data(Qt.UserRole))
-        if issue_index < 0 or issue_index >= len(self.state.issues):
-            self._clear_details()
-            return
-
-        issue = self.state.issues[issue_index]
-        self._set_details(issue)
-
-        if issue.status == "Open":
-            issue.status = "Acknowledged"
-            status_item = self.model.item(source_row, 6)
-            if status_item is not None:
-                status_item.setText("Acknowledged")
-                status_item.setIcon(QIcon())
-            self.state.stateChanged.emit()
-
-        if issue.is_unread:
-            issue.is_unread = False
-            row_items = [self.model.item(source_row, c) for c in range(self.model.columnCount())]
-            self._set_row_bold([i for i in row_items if i is not None], False)
-            self.state.stateChanged.emit()
-
-    def _set_details(self, issue: Issue) -> None:
-        self.severity_edit.setText(str(issue.severity))
-        self.name_edit.setText(str(issue.name))
-        self.account_name_edit.setText(str(issue.account_name))
-        self.opportunity_name_edit.setText(str(issue.opportunity_name))
-        self.category_edit.setText(str(issue.category))
-        self.owner_edit.setText(str(issue.owner))
-        self.status_edit.setText(str(issue.status))
-        ts = issue.timestamp
-        self.timestamp_edit.setText(ts.toString("yyyy-MM-dd") if ts else "")
-        fields = issue.fields
-        if isinstance(fields, (list, tuple)):
-            self.fields_edit.setText(", ".join(str(f) for f in fields))
-        elif fields is None:
-            self.fields_edit.setText("")
-        else:
-            self.fields_edit.setText(str(fields))
-        self.metric_name_edit.setText(str(issue.metric_name))
-        metric_value = issue.metric_value
-        self.metric_value_edit.setText("" if metric_value is None else str(metric_value))
-        self.explanation_edit.setPlainText(str(issue.explanation))
-        self.resolution_edit.setPlainText(str(issue.resolution))
-
-    def _clear_details(self) -> None:
-        self.severity_edit.clear()
-        self.name_edit.clear()
-        self.account_name_edit.clear()
-        self.opportunity_name_edit.clear()
-        self.category_edit.clear()
-        self.owner_edit.clear()
-        self.status_edit.clear()
-        self.timestamp_edit.clear()
-        self.fields_edit.clear()
-        self.metric_name_edit.clear()
-        self.metric_value_edit.clear()
-        self.explanation_edit.clear()
-        self.resolution_edit.clear()
