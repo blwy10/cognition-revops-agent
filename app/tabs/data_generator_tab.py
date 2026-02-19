@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 import os
 from typing import Optional
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.state import AppState
+from generator import generate
 
 
 class DataGeneratorTab(QWidget):
@@ -124,10 +126,14 @@ class DataGeneratorTab(QWidget):
             if result != QMessageBox.Yes:
                 return
 
+        reps, accounts, opportunities, territories = generate()
         payload = {
             "schema": "revops-agent-skeleton",
-            "generated_at": "placeholder",
-            "records": [{"id": 1, "name": "Example"}],
+            "generated_at": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
+            "reps": reps,
+            "accounts": accounts,
+            "opportunities": opportunities,
+            "territories": territories,
         }
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
