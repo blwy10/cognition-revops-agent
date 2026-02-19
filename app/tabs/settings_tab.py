@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -216,13 +217,93 @@ class SettingsTab(QWidget):
         portfolioEarlyStageLayout.addLayout(portfolioEarlyStageForm)
         portfolioEarlyStageLayout.addStretch(1)
 
+        repEarlyLowPct = QSpinBox()
+        repEarlyLowPct.setRange(0, 100)
+        repEarlyLowPct.setValue(35)
+
+        repEarlyMediumPct = QSpinBox()
+        repEarlyMediumPct.setRange(0, 100)
+        repEarlyMediumPct.setValue(45)
+
+        repEarlyHighPct = QSpinBox()
+        repEarlyHighPct.setRange(0, 100)
+        repEarlyHighPct.setValue(60)
+
+        RuleSettings.set(
+            "rep_early_stage_concentration.low_pct",
+            repEarlyLowPct.value(),
+        )
+        RuleSettings.set(
+            "rep_early_stage_concentration.medium_pct",
+            repEarlyMediumPct.value(),
+        )
+        RuleSettings.set(
+            "rep_early_stage_concentration.high_pct",
+            repEarlyHighPct.value(),
+        )
+
+        repEarlyLowPct.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "rep_early_stage_concentration.low_pct", int(v)
+            )
+        )
+        repEarlyMediumPct.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "rep_early_stage_concentration.medium_pct", int(v)
+            )
+        )
+        repEarlyHighPct.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "rep_early_stage_concentration.high_pct", int(v)
+            )
+        )
+
+        repEarlyMinOpps = QSpinBox()
+        repEarlyMinOpps.setRange(0, 10000)
+        repEarlyMinOpps.setValue(10)
+
+        RuleSettings.set(
+            "rep_early_stage_concentration.min_opps",
+            repEarlyMinOpps.value(),
+        )
+
+        repEarlyMinOpps.valueChanged.connect(
+            lambda v: RuleSettings.set(
+                "rep_early_stage_concentration.min_opps", int(v)
+            )
+        )
+
+        repEarlyStageForm = QFormLayout()
+        repEarlyStageForm.setHorizontalSpacing(10)
+        repEarlyStageForm.setVerticalSpacing(8)
+        repEarlyStageForm.addRow("Low pct", repEarlyLowPct)
+        repEarlyStageForm.addRow("Medium pct", repEarlyMediumPct)
+        repEarlyStageForm.addRow("High pct", repEarlyHighPct)
+        repEarlyStageForm.addRow("Minimum opportunities", repEarlyMinOpps)
+
+        repEarlyStageGroup = QGroupBox("Rep Early Stage Concentration Settings")
+        repEarlyStageLayout = QVBoxLayout(repEarlyStageGroup)
+        repEarlyStageLayout.setContentsMargins(16, 16, 16, 16)
+        repEarlyStageLayout.setSpacing(12)
+        repEarlyStageLayout.addLayout(repEarlyStageForm)
+        repEarlyStageLayout.addStretch(1)
+
+        contentWidget = QWidget()
+        contentLayout = QVBoxLayout(contentWidget)
+        contentLayout.addWidget(persistenceGroup)
+        contentLayout.addWidget(tamGroup)
+        contentLayout.addWidget(staleGroup)
+        contentLayout.addWidget(missingCloseDateGroup)
+        contentLayout.addWidget(portfolioEarlyStageGroup)
+        contentLayout.addWidget(repEarlyStageGroup)
+        contentLayout.addStretch(1)
+
+        scrollArea = QScrollArea()
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setWidget(contentWidget)
+
         layout = QVBoxLayout(self)
-        layout.addWidget(persistenceGroup)
-        layout.addWidget(tamGroup)
-        layout.addWidget(staleGroup)
-        layout.addWidget(missingCloseDateGroup)
-        layout.addWidget(portfolioEarlyStageGroup)
-        layout.addStretch(1)
+        layout.addWidget(scrollArea)
 
         self.run_json_browse.clicked.connect(self._on_browse_run_json)
         self.run_json_reset.clicked.connect(self._on_reset_run_json)

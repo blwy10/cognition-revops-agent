@@ -18,6 +18,7 @@ from rules.default_rules import (
     MissingCloseDateRule,
     StalenessRule,
     PortfolioEarlyStageConcentrationRule,
+    RepEarlyStageConcentrationRule
 )
 
 opportunity_rules = [
@@ -26,6 +27,8 @@ opportunity_rules = [
 ]
 
 opportunity_portfollio_rules = [PortfolioEarlyStageConcentrationRule]
+
+rep_rules = [RepEarlyStageConcentrationRule]
 
 
 class RunTab(QWidget):
@@ -136,6 +139,37 @@ class RunTab(QWidget):
                     "is_unread": True,
                 }
             )
+        
+        # Run rep-level rules
+        for rep in self.state.reps:
+            for rule in rep_rules:
+                try:
+                    result = rule.run(rep, other_context=self.state.opportunities)
+                except Exception as e:
+                    print(e)
+                    raise
+
+                if result is None:
+                    continue
+
+                issues.append(
+                    {
+                        "severity": str(result.severity),
+                        "name": str(result.name),
+                        "account_name": str(result.account_name),
+                        "opportunity_name": str(result.opportunity_name),
+                        "category": str(result.category),
+                        "owner": str(result.responsible),
+                        "fields": list(result.fields),
+                        "metric_name": str(result.metric_name),
+                        "metric_value": result.formatted_metric_value,
+                        "explanation": str(result.explanation),
+                        "resolution": str(result.resolution),
+                        "status": "Open",
+                        "timestamp": QDateTime.currentDateTime(),
+                        "is_unread": True,
+                    }
+                )
 
         self.state.issues = issues
         self.state.selected_run_id = next_id

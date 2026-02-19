@@ -55,13 +55,13 @@ def portfolio_early_stage_concentration_explanation(metric_name: str, metric_val
 
 PortfolioEarlyStageConcentrationRule = Rule(
     rule_type="portfolio",
-    name="Early stage concentration",
+    name="Portfolio concentration",
     category="Pipeline Hygiene",
     metric=portfolio_early_stage_concentration_metric,
     condition=portfolio_early_stage_concentration_condition,
     responsible=portfolio_early_stage_concentration_responsible,
     fields=["stage"],
-    metric_name="Early stage concentration",
+    metric_name="Portfolio concentration",
     format_metric_value=portfolio_early_stage_concentration_formatted_metric_value,
     explanation=portfolio_early_stage_concentration_explanation,
     resolution="Ops to analyse what is causing bottlenecks in early stages",
