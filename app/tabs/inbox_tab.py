@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QStandardItem
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
+    QHBoxLayout,
     QLineEdit,
     QPushButton,
     QSplitter,
@@ -52,7 +53,24 @@ class InboxTab(QWidget):
         self.splitter.addWidget(self.table)
 
         self.details_widget = QWidget(self)
-        self.details_form = QFormLayout(self.details_widget)
+
+        self.details_layout = QVBoxLayout(self.details_widget)
+        self.details_layout.setContentsMargins(12, 12, 12, 12)
+        self.details_layout.setSpacing(10)
+
+        self.actionButtonLayout = QHBoxLayout()
+        self.actionButtonLayout.setContentsMargins(12, 12, 12, 12)
+        self.actionButtonLayout.setSpacing(10)
+
+        self.snooze_button = QPushButton("Snooze")
+        self.resolve_button = QPushButton("Resolve")
+        self.reopen_button = QPushButton("Reopen")
+
+        self.actionButtonLayout.addWidget(self.snooze_button)
+        self.actionButtonLayout.addWidget(self.resolve_button)
+        self.actionButtonLayout.addWidget(self.reopen_button)
+
+        self.details_form = QFormLayout()
         self.details_form.setContentsMargins(12, 12, 12, 12)
         self.details_form.setHorizontalSpacing(10)
         self.details_form.setVerticalSpacing(8)
@@ -71,19 +89,15 @@ class InboxTab(QWidget):
         self.notes_edit.setReadOnly(True)
         self.notes_edit.setPlainText("Select an issue to see details.")
 
-        self.snooze_button = QPushButton("Snooze")
-        self.resolve_button = QPushButton("Resolve")
-        self.reopen_button = QPushButton("Reopen")
-
         self.details_form.addRow("Severity", self.severity_edit)
-        self.details_form.addRow("", self.snooze_button)
-        self.details_form.addRow("", self.resolve_button)
-        self.details_form.addRow("", self.reopen_button)
         self.details_form.addRow("Category", self.category_edit)
         self.details_form.addRow("Owner", self.owner_edit)
         self.details_form.addRow("Status", self.status_edit)
         self.details_form.addRow("Timestamp", self.timestamp_edit)
         self.details_form.addRow("Notes", self.notes_edit)
+
+        self.details_layout.addLayout(self.actionButtonLayout)
+        self.details_layout.addLayout(self.details_form)
 
         self.splitter.addWidget(self.details_widget)
         self.splitter.setSizes([480, 720])
@@ -143,6 +157,31 @@ class InboxTab(QWidget):
         if issue_index < 0 or issue_index >= len(self.state.issues):
             return None
         return issue_index
+
+    def _selected_row(self) -> Optional[int]:
+        selected = self.table.selectionModel().selectedRows()
+        if not selected:
+            return None
+        return selected[0].row()
+
+    def _update_row_visuals(self, *, row: int, issue: dict) -> None:
+        status_item = self.model.item(row, 4)
+        if status_item is not None:
+            status_text = str(issue.get("status", ""))
+            status_item.setText(status_text)
+            if status_text == "Snoozed":
+                status_item.setIcon(self._snooze_icon)
+            elif status_text == "Resolved":
+                status_item.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
+            else:
+                status_item.setIcon(QIcon())
+
+        if issue.get("is_unread", False):
+            row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
+            self._set_row_bold([i for i in row_items if i is not None], True)
+        else:
+            row_items = [self.model.item(row, c) for c in range(self.model.columnCount())]
+            self._set_row_bold([i for i in row_items if i is not None], False)
 
     def _make_flag_icon(self) -> QIcon:
         size = 14
@@ -207,34 +246,46 @@ class InboxTab(QWidget):
         issue_index = self._selected_issue_index()
         if issue_index is None:
             return
+        row = self._selected_row()
+        if row is None:
+            return
         issue = self.state.issues[issue_index]
         from PySide6.QtCore import QDateTime
 
         issue["status"] = "Snoozed"
         issue["snoozed_until"] = QDateTime.currentDateTime().addDays(1)
-        self.state.issuesChanged.emit()
+        self._update_row_visuals(row=row, issue=issue)
+        self.status_edit.setText(str(issue.get("status", "")))
         self.state.stateChanged.emit()
 
     def _on_resolve_clicked(self) -> None:
         issue_index = self._selected_issue_index()
         if issue_index is None:
             return
+        row = self._selected_row()
+        if row is None:
+            return
         issue = self.state.issues[issue_index]
         issue["status"] = "Resolved"
         issue.pop("snoozed_until", None)
         issue["is_unread"] = False
-        self.state.issuesChanged.emit()
+        self._update_row_visuals(row=row, issue=issue)
+        self.status_edit.setText(str(issue.get("status", "")))
         self.state.stateChanged.emit()
 
     def _on_reopen_clicked(self) -> None:
         issue_index = self._selected_issue_index()
         if issue_index is None:
             return
+        row = self._selected_row()
+        if row is None:
+            return
         issue = self.state.issues[issue_index]
         issue["status"] = "Open"
         issue.pop("snoozed_until", None)
         issue["is_unread"] = True
-        self.state.issuesChanged.emit()
+        self._update_row_visuals(row=row, issue=issue)
+        self.status_edit.setText(str(issue.get("status", "")))
         self.state.stateChanged.emit()
 
     def _set_row_bold(self, row_items: list[QStandardItem], bold: bool) -> None:
