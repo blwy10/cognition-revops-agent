@@ -172,7 +172,7 @@ class AppState(QObject):
                             fields=isd.get("fields", []),
                             metric_name=isd.get("metric_name", ""),
                             metric_value=isd.get("metric_value"),
-                            formatted_metric_value=str(isd.get("metric_value", "")),
+                            formatted_metric_value=str(isd.get("formatted_metric_value", "")),
                             explanation=isd.get("explanation", ""),
                             resolution=isd.get("resolution", ""),
                             status=isd.get("status", "Open"),

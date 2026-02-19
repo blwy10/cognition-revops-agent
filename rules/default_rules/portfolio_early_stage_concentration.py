@@ -33,7 +33,7 @@ RULE_SETTINGS_FIELDS = [
 
 def portfolio_early_stage_concentration_metric(opportunities: list[Opportunity], *args, **kwargs) -> dict:
     total_opps = len(opportunities)
-    stage_0_and_1_opps = sum(1 for opp in opportunities if opp.stage in ("0 - Discovery", "1 - Qualification"))
+    stage_0_and_1_opps = sum(1 for opp in opportunities if opp.stage in ("0 - New Opportunity", "1 - Qualification"))
     return {"total_opps": total_opps, "stage_0_and_1_opps": stage_0_and_1_opps}
 
 def portfolio_early_stage_concentration_condition(metric_value: dict) -> Severity:

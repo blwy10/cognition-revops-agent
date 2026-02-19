@@ -41,7 +41,7 @@ RULE_SETTINGS_FIELDS = [
 def rep_early_stage_concentration_metric(rep: Rep, opportunities: list[Opportunity]) -> dict:
     owned_by_rep = [opp for opp in opportunities if opp.owner == rep.name]
     total_opps = len(owned_by_rep)
-    stage_0_and_1_opps = sum(1 for opp in owned_by_rep if opp.stage in ("0 - Discovery", "1 - Qualification"))
+    stage_0_and_1_opps = sum(1 for opp in owned_by_rep if opp.stage in ("0 - New Opportunity", "1 - Qualification"))
     return {"total_opps": total_opps, "stage_0_and_1_opps": stage_0_and_1_opps}
 
 def rep_early_stage_concentration_condition(metric_value: dict) -> Severity:

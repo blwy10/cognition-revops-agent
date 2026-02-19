@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+
 from . import settings
 from .generate import generate
 from .validate import validate
@@ -8,11 +10,16 @@ from .validate import validate
 def main() -> None:
     reps, accounts, opportunities, territories, opportunity_history = generate(seed=123)
 
+    reps_d = [dataclasses.asdict(r) for r in reps]
+    accounts_d = [dataclasses.asdict(a) for a in accounts]
+    opportunities_d = [dataclasses.asdict(o) for o in opportunities]
+    territories_d = [dataclasses.asdict(t) for t in territories]
+
     validate(
-        reps,
-        accounts,
-        opportunities,
-        territories,
+        reps_d,
+        accounts_d,
+        opportunities_d,
+        territories_d,
         expected_reps=settings.NUM_REPS,
         expected_accounts=settings.NUM_ACCOUNTS,
         expected_opportunities=settings.NUM_OPPORTUNITIES,
@@ -24,7 +31,7 @@ def main() -> None:
         tam_per_developer=settings.TAM_PER_DEVELOPER,
     )
 
-    total = sum(int(o["amount"]) for o in opportunities)
+    total = sum(o.amount for o in opportunities)
     print(
         f"OK reps={len(reps)} accounts={len(accounts)} opps={len(opportunities)} territories={len(territories)} "
         f"history={len(opportunity_history)} total={total}"

@@ -40,7 +40,7 @@ opportunity_rules = [
     SlippingRule,
 ]
 
-opportunity_portfollio_rules = [PortfolioEarlyStageConcentrationRule]
+opportunity_portfolio_rules = [PortfolioEarlyStageConcentrationRule]
 
 rep_rules = [RepEarlyStageConcentrationRule, AcctPerRepAboveThreshold, PipelinePerRepImbalance]
 
@@ -209,7 +209,7 @@ class RunTab(QWidget):
                 ))
 
         # Run portfolio-level rules
-        for rule in opportunity_portfollio_rules:
+        for rule in opportunity_portfolio_rules:
             if not _rule_enabled(rule):
                 continue
             try:

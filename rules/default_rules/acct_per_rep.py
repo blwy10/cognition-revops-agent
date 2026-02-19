@@ -31,8 +31,8 @@ RULE_SETTINGS_FIELDS = [
 ]
 
 def acct_per_rep_metric(rep: Rep, opportunities: list[Opportunity]) -> int:
-    owned_by_rep = [opp for opp in opportunities if opp.owner == rep.name]
-    return len(owned_by_rep)
+    unique_accounts = set(opp.accountId for opp in opportunities if opp.owner == rep.name)
+    return len(unique_accounts)
 
 def acct_per_rep_condition(metric_value: int) -> Severity:
     count = metric_value
