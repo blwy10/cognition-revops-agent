@@ -22,8 +22,13 @@ class AppState(QObject):
     def __init__(self, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._settings = QSettings("cognition", "revops-analysis-agent")
-        self.loaded_data_path: Optional[str] = None
-        self.output_data_path: Optional[str] = None
+        stored_loaded_path = self._settings.value("loaded_data_path", "")
+        loaded_path = str(stored_loaded_path).strip() if stored_loaded_path else ""
+        self._loaded_data_path: Optional[str] = loaded_path or None
+
+        stored_output_path = self._settings.value("output_data_path", "")
+        output_path = str(stored_output_path).strip() if stored_output_path else ""
+        self._output_data_path: Optional[str] = output_path or None
 
         self.dataset: Optional[dict[str, Any]] = None
         self.reps: list[dict] = []
@@ -39,6 +44,32 @@ class AppState(QObject):
         default_run_path = self.get_default_run_json_path()
         stored_run_path = self._settings.value("run_json_path", default_run_path)
         self._run_json_path = str(stored_run_path) if stored_run_path else default_run_path
+
+    @property
+    def loaded_data_path(self) -> Optional[str]:
+        return self._loaded_data_path
+
+    @loaded_data_path.setter
+    def loaded_data_path(self, value: Optional[str]) -> None:
+        new_value = str(value or "").strip() or None
+        if new_value == getattr(self, "_loaded_data_path", None):
+            return
+        self._loaded_data_path = new_value
+        self._settings.setValue("loaded_data_path", new_value or "")
+        self.loadedDataChanged.emit(new_value or "")
+
+    @property
+    def output_data_path(self) -> Optional[str]:
+        return self._output_data_path
+
+    @output_data_path.setter
+    def output_data_path(self, value: Optional[str]) -> None:
+        new_value = str(value or "").strip() or None
+        if new_value == getattr(self, "_output_data_path", None):
+            return
+        self._output_data_path = new_value
+        self._settings.setValue("output_data_path", new_value or "")
+        self.outputPathChanged.emit(new_value or "")
 
     @property
     def run_json_path(self) -> str:

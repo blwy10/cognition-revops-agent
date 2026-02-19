@@ -95,7 +95,6 @@ class DataGeneratorTab(QWidget):
         if not path:
             return
         self.state.loaded_data_path = path
-        self.state.loadedDataChanged.emit(path)
         self.state.load_json_data(path)
 
     def _on_generate(self) -> None:
@@ -108,7 +107,6 @@ class DataGeneratorTab(QWidget):
         if not path:
             return
         self.state.output_data_path = path
-        self.state.outputPathChanged.emit(path)
 
         output_path = self.state.output_data_path
         if os.path.exists(output_path):
@@ -136,5 +134,4 @@ class DataGeneratorTab(QWidget):
             json.dump(payload, f, indent=2)
 
         self.state.loaded_data_path = output_path
-        self.state.loadedDataChanged.emit(output_path)
         self.state.load_json_data(output_path)

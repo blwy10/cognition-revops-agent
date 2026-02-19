@@ -50,6 +50,26 @@ class MainWindow(QMainWindow):
         self.state.stateChanged.connect(self._schedule_persist)
 
         self._load_run_state_on_startup()
+        self._load_data_on_startup()
+
+    def _load_data_on_startup(self) -> None:
+        path = self.state.loaded_data_path
+        if not path:
+            return
+        if not os.path.exists(path):
+            self.state.loaded_data_path = None
+            return
+
+        try:
+            self.state.load_json_data(path)
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Data JSON",
+                f"Could not load data from:\n{path}\n\nError: {e}\n\nThe saved path will be cleared.",
+            )
+            self.state.loaded_data_path = None
+            return
 
     def _load_run_state_on_startup(self) -> None:
         try:
