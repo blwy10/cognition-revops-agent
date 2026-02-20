@@ -154,3 +154,21 @@ cython_debug/
 
 # Cache
 *.cache
+
+# Node / npm
+node_modules/
+.npm/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Next.js output
+.next/
+out/
+
+# Keep Next.js source
+!nextjs-version/lib/
+!nextjs-version/lib/**
